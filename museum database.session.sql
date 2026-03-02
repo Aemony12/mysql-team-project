@@ -24,16 +24,17 @@ CREATE TABLE Exhibition(
     Exhibition_ID INT PRIMARY KEY NOT NULL,
     Exhibition_Name VARCHAR(50) NOT NULL,
     Starting_Date DATE NOT NULL,
-    Ending_Date DATE NOT NULL
+    Ending_Date DATE NOT NULL,
+    CHECK (Ending_Date >= Starting_Date)
 );
 
 --@Block
 CREATE TABLE Gift_Shop_Item(
     Gift_Shop_Item INT PRIMARY KEY NOT NULL,
     Name_of_Item VARCHAR(30),
-    Price_of_Item DECIMAL(4,2),
+    Price_of_Item DECIMAL(10,2),
     Category VARCHAR(30),
-    Stock_Quantity INT NULL,
+    Stock_Quantity INT CHECK (Stock_Quantity >= 0),
     Created_By VARCHAR(30),
     Created_At DATE,
     Updated_By VARCHAR(30),
@@ -44,7 +45,7 @@ CREATE TABLE Gift_Shop_Item(
 CREATE TABLE Food(
     Food_ID INT PRIMARY KEY NOT NULL,
     Food_Name VARCHAR(30),
-    Food_Price DECIMAL(4,2),
+    Food_Price DECIMAL(4,2) NOT NULL CHECK (Food_Price >= 0),
     Created_By VARCHAR(30),
     Created_At DATE,
     Updated_By VARCHAR(30),
@@ -64,16 +65,17 @@ CREATE TABLE Membership(
     Created_At DATE,
     Updated_By VARCHAR(30),
     Updated_AT DATE
+    CHECK (Date_Exited IS NULL OR Date_Exited >= Date_Joined)
 );
 
--- Below are tales with foreign keys
+-- Below are tables with foreign keys
 --@block
 
 CREATE TABLE Employee (
     Employee_ID INT PRIMARY KEY NOT NULL,
-    Last_Name VARCHAR(30),
-    First_Name VARCHAR(30),
-    Date_Hired DATE,
+    Last_Name VARCHAR(30) NOT NULL,
+    First_Name VARCHAR(30) NOT NULL,
+    Date_Hired DATE NOT NULL,
     Email VARCHAR(50),
     Employee_Address VARCHAR(50),
     Date_of_Birth DATE,
@@ -134,11 +136,11 @@ CREATE TABLE Exhibition_Artwork(
 );
 
 -- @Block
-CREATE TABLE ticket(
+CREATE TABLE Ticket(
     Ticket_ID INT PRIMARY KEY NOT NULL,
     Purchase_type VARCHAR(30),
-    Purchase_Date DATE,
-    Visit_Date DATE,
+    Purchase_Date DATE NOT NULL,
+    Visit_Date DATE NOT NULL,
     Last_Name VARCHAR(30),
     First_Name VARCHAR(30),
     phone_number VARCHAR(10),
@@ -158,8 +160,8 @@ CREATE TABLE ticket(
 CREATE TABLE ticket_line(
     ticket_line_ID INT PRIMARY KEY NOT NULL,
     ticket_Type VARCHAR(30),
-    Quantity INT,
-    price_per_ticket DECIMAL(6,2),
+    Quantity INT NOT NULL CHECK (Quantity > 0),
+    price_per_ticket DECIMAL(6,2) NOT NULL CHECK (price_per_ticket >= 0),
     Ticket_ID INT NOT NULL,
     total_sum_of_ticket DECIMAL(6,2) GENERATED ALWAYS AS (Quantity * price_per_ticket) STORED,
     exhibition_ID INT NULL,
@@ -179,8 +181,8 @@ CREATE TABLE ticket_line(
 CREATE TABLE Event (
     event_ID INT PRIMARY KEY NOT NULL,
     event_Name VARCHAR(30) NOT NULL,
-    start_Date DATE,
-    end_Date DATE,
+    start_Date DATE NOT NULL,
+    end_Date DATE NOT NULL,
     member_only BOOLEAN,
     coordinator_ID INT NULL,
     created_by VARCHAR(30),
@@ -190,7 +192,7 @@ CREATE TABLE Event (
     Max_capacity INT NOT NULL,
     
     CONSTRAINT chk_capacity CHECK (Max_capacity>0),
-    
+    CHECK (end_Date >= start_Date),
     CONSTRAINT fk_Event_Coordinator
     FOREIGN KEY(coordinator_ID) REFERENCES Employee(Employee_ID)
 );
@@ -198,9 +200,9 @@ CREATE TABLE Event (
 -- @Block
 CREATE TABLE event_registration(
     Event_Registration_ID INT PRIMARY KEY NOT NULL,
-    Registration_Date DATE,
-    Event_ID INT,
-    Membership_ID INT,
+    Registration_Date DATE NOT NULL,
+    Event_ID INT NOT NULL,
+    Membership_ID INT NOT NULL,
     Ticket_ID INT,
     Created_By VARCHAR(30),
     Created_At DATE,
