@@ -92,8 +92,8 @@ CREATE TABLE Employee (
     Updated_By VARCHAR(30),
     Updated_AT DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CHECK ((Hourly_Pay IS NOT NULL AND Salary IS NULL)
-    OR (Hourly_Pay IS NULL AND Salary IS NOT NULL)),
+    CHECK ((Hourly_Pay IS NOT NULL AND Hourly_Pay > 0 AND Salary IS NULL)
+    OR (Salary IS NOT NULL AND Salary > 0 AND Hourly_Pay IS NULL)),
 
     CONSTRAINT fk_Employee_Supervisor
     FOREIGN KEY (Supervisor_ID) REFERENCES Employee(Employee_ID)
@@ -287,13 +287,14 @@ CREATE TABLE Gift_Shop_Sale_Line (
     Gift_Shop_Sale_Line_ID INT AUTO_INCREMENT PRIMARY KEY,
     Price_When_Item_is_Sold DECIMAL(10, 2) NOT NULL,
     Quantity INT NOT NULL,
-    Total_Sum_For_Gift_Shop_Sale DECIMAL(10, 2) NOT NULL,
+    Total_Sum_For_Gift_Shop_Sale DECIMAL(10, 2) GENERATED ALWAYS AS (Quantity * Price_When_Item_is_Sold) STORED,
     Gift_Shop_Sale_ID INT NOT NULL,
     Gift_Shop_Item_ID INT NOT NULL,
     Created_By VARCHAR(30),
     Created_At DATETIME DEFAULT CURRENT_TIMESTAMP,
     Updated_By VARCHAR(30) NULL,
     Updated_At DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
     CONSTRAINT fk_Gift_Shop_Sale_Line_Sale
     FOREIGN KEY (Gift_Shop_Sale_ID) REFERENCES Gift_Shop_Sale (Gift_Shop_Sale_ID)
     ON DELETE CASCADE,
@@ -302,11 +303,8 @@ CREATE TABLE Gift_Shop_Sale_Line (
     FOREIGN KEY (Gift_Shop_Item_ID) REFERENCES Gift_Shop_Item (Gift_Shop_Item_ID) 
     ON DELETE RESTRICT,
 
-    CONSTRAINT chk_Gift_Shop_Sale_Line_Qty CHECK (Quantity > 0),
-    CONSTRAINT chk_Gift_Shop_Sale_Line_Price CHECK (Price_When_Item_is_Sold >= 0),
-    CONSTRAINT chk_Gift_Shop_Sale_Line_Total CHECK (
-        Total_Sum_For_Gift_Shop_Sale = Quantity * Price_When_Item_is_Sold
-    )
+    CHECK (Quantity > 0),
+    CHECK (Price_When_Item_is_Sold >= 0)
 );
 
 --@block
