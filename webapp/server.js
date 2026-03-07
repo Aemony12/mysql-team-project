@@ -69,28 +69,28 @@ app.get("/login", (req, res) => {
 
 app.post("/login", asyncHandler(async (req, res) => {
   const email = req.body.email?.trim().toLowerCase();
-  const password = req.body.password?.trim();
+  const submittedCredential = req.body.password?.trim();
 
   const [rows] = await pool.query(
-    `SELECT id, name, email, password, role, is_active, employee_id, membership_id
+    `SELECT id, name, email, password AS stored_credential, role, is_active, employee_id, membership_id
      FROM users
      WHERE email = ?`,
     [email],
   );
 
-  const user = rows[0];
-  if (!user || user.password !== password || !user.is_active) {
+  const authenticatedUser = rows[0];
+  if (!authenticatedUser || authenticatedUser.stored_credential !== submittedCredential || !authenticatedUser.is_active) {
     setFlash(req, "Invalid login credentials.");
     return res.redirect("/login");
   }
 
   req.session.user = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    employeeId: user.employee_id,
-    membershipId: user.membership_id,
+    id: authenticatedUser.id,
+    name: authenticatedUser.name,
+    email: authenticatedUser.email,
+    role: authenticatedUser.role,
+    employeeId: authenticatedUser.employee_id,
+    membershipId: authenticatedUser.membership_id,
   };
 
   res.redirect("/dashboard");
