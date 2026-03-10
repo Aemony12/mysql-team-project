@@ -232,7 +232,7 @@ CREATE TABLE Schedule (
 
 --@block
 CREATE TABLE Gift_Shop_Sale (
-    Gift_Shop_Sale_ID AUTO_INCREMENT PRIMARY KEY,
+    Gift_Shop_Sale_ID INT AUTO_INCREMENT PRIMARY KEY,
     Sale_Date DATE NOT NULL,
     Employee_ID INT NOT NULL,
     Created_By VARCHAR(30),
@@ -286,8 +286,8 @@ CREATE TABLE Food_Sale_Line (
     Updated_At DATE,
     CHECK (Quantity > 0),
     CHECK (Price_When_Food_Was_Sold >= 0),
-    CONSTRAINT fk_Food_Sale_Line_Sale FOREIGN KEY (Food_Sale_ID) References Food_Sale (Food_Sale_ID) ON DELETE CASCADE,
-    CONSTRAINT fk_Food_Sale_Line_Food FOREIGN KEY REFERENCES Food (Food_ID) ON DELETE RESTRICT
+    CONSTRAINT fk_Food_Sale_Line_Sale FOREIGN KEY (Food_Sale_ID) REFERENCES Food_Sale (Food_Sale_ID) ON DELETE CASCADE,
+    CONSTRAINT fk_Food_Sale_Line_Food FOREIGN KEY (Food_ID) REFERENCES Food (Food_ID) ON DELETE RESTRICT
 );
 
 --@Block, this is for circular foreign keys after tables have been made
