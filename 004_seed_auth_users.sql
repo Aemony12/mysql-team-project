@@ -1,17 +1,26 @@
 USE teamdb;
 
-INSERT INTO Membership (
-    Membership_ID,
-    Last_Name,
-    First_Name,
-    Phone_Number,
-    Email,
-    Date_Joined,
-    Created_By,
-    Created_At
-)
-VALUES
-    (1, 'Member', 'Museum', '7135550101', 'member@example.com', CURRENT_DATE, 'seed', CURRENT_DATE)
+INSERT INTO
+    Membership (
+        Membership_ID,
+        Last_Name,
+        First_Name,
+        Phone_Number,
+        Email,
+        Date_Joined,
+        Created_By,
+        Created_At
+    )
+VALUES (
+        1,
+        'Member',
+        'Museum',
+        '7135550101',
+        'member@example.com',
+        CURRENT_DATE,
+        'seed',
+        CURRENT_DATE
+    )
 ON DUPLICATE KEY UPDATE
     Last_Name = VALUES(Last_Name),
     First_Name = VALUES(First_Name),
@@ -21,22 +30,46 @@ ON DUPLICATE KEY UPDATE
     Created_By = VALUES(Created_By),
     Created_At = VALUES(Created_At);
 
-INSERT INTO Employee (
-    Employee_ID,
-    Last_Name,
-    First_Name,
-    Date_Hired,
-    Email,
-    Hourly_Pay,
-    Employee_Role,
-    Supervisor_ID,
-    Department_ID,
-    Created_By,
-    Created_At
-)
-VALUES
-    (1, 'Employee', 'Staff', CURRENT_DATE, 'employee@example.com', 18.50, 'employee', NULL, NULL, 'seed', CURRENT_DATE),
-    (2, 'Supervisor', 'Lead', CURRENT_DATE, 'supervisor@example.com', 27.50, 'supervisor', 1, NULL, 'seed', CURRENT_DATE)
+INSERT INTO
+    Employee (
+        Employee_ID,
+        Last_Name,
+        First_Name,
+        Date_Hired,
+        Email,
+        Hourly_Pay,
+        Employee_Role,
+        Supervisor_ID,
+        Department_ID,
+        Created_By,
+        Created_At
+    )
+VALUES (
+        1,
+        'Employee',
+        'Staff',
+        CURRENT_DATE,
+        'employee@example.com',
+        18.50,
+        'employee',
+        NULL,
+        NULL,
+        'seed',
+        CURRENT_DATE
+    ),
+    (
+        2,
+        'Supervisor',
+        'Lead',
+        CURRENT_DATE,
+        'supervisor@example.com',
+        27.50,
+        'supervisor',
+        1,
+        NULL,
+        'seed',
+        CURRENT_DATE
+    )
 ON DUPLICATE KEY UPDATE
     Last_Name = VALUES(Last_Name),
     First_Name = VALUES(First_Name),
@@ -49,9 +82,23 @@ ON DUPLICATE KEY UPDATE
     Created_By = VALUES(Created_By),
     Created_At = VALUES(Created_At);
 
-INSERT INTO users (name, email, password, role, is_active, membership_id)
-VALUES
-    ('Museum Member', 'member@example.com', 'member123', 'user', TRUE, 1)
+INSERT INTO
+    users (
+        name,
+        email,
+        password,
+        role,
+        is_active,
+        membership_id
+    )
+VALUES (
+        'Museum Member',
+        'member@example.com',
+        'member123',
+        'user',
+        TRUE,
+        1
+    )
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     password = VALUES(password),
@@ -59,10 +106,31 @@ ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active),
     membership_id = VALUES(membership_id);
 
-INSERT INTO users (name, email, password, role, is_active, employee_id)
-VALUES
-    ('Staff Employee', 'employee@example.com', 'employee123', 'employee', TRUE, 1),
-    ('Lead Supervisor', 'supervisor@example.com', 'supervisor123', 'supervisor', TRUE, 2)
+INSERT INTO
+    users (
+        name,
+        email,
+        password,
+        role,
+        is_active,
+        employee_id
+    )
+VALUES (
+        'Staff Employee',
+        'employee@example.com',
+        'employee123',
+        'employee',
+        TRUE,
+        1
+    ),
+    (
+        'Lead Supervisor',
+        'supervisor@example.com',
+        'supervisor123',
+        'supervisor',
+        TRUE,
+        2
+    )
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     password = VALUES(password),
