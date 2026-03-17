@@ -1,5 +1,3 @@
-USE teamdb;
-
 ALTER TABLE users
     ADD COLUMN password VARCHAR(255) NOT NULL DEFAULT 'changeme',
     ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user',

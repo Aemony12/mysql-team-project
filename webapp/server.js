@@ -9,7 +9,7 @@ loadEnv(path.join(__dirname, ".env"));
 const app = express();
 const port = Number(process.env.PORT || 3000);
 
-const pool = mysql.createPool({
+const poolConfig = {
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || "root",
@@ -17,10 +17,15 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || "teamdb",
   waitForConnections: true,
   connectionLimit: 10,
-  ssl: {
+};
+
+if (isTruthy(process.env.DB_SSL)) {
+  poolConfig.ssl = {
     rejectUnauthorized: false,
-  },
-});
+  };
+}
+
+const pool = mysql.createPool(poolConfig);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -137,7 +142,7 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  setFlash(req, err && err.sqlMessage ? err.sqlMessage : "Unexpected error.");
+  setFlash(req, err && (err.sqlMessage || err.message) ? (err.sqlMessage || err.message) : "Unexpected error.");
   res.redirect(req.headers.referer || "/");
 });
 
@@ -230,4 +235,11 @@ function loadEnv(filePath) {
       process.env[key] = value;
     }
   }
+}
+
+function isTruthy(value) {
+  if (!value) {
+    return false;
+  }
+  return ["1", "true", "yes", "on"].includes(String(value).trim().toLowerCase());
 }
