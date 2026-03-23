@@ -8,7 +8,7 @@ loadEnv(path.join(__dirname, ".env"));
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
-
+//hi 
 const poolConfig = {
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT || 3306),
