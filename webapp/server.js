@@ -180,6 +180,27 @@ app.get("/add-artist", requireLogin, asyncHandler(async (req, res) => {
           <label>Artist Name<input type="text" name="name" required></label>
           <label>Date of Birth<input type="date" name="dob"></label>
           <label>Birth Place<input type="text" name="birthplace"></label>
+
+          <label>
+            Artist Name
+            <input type="text" name="name" required>
+          </label>
+
+          <label>
+            Birth Place
+            <input type="text" name="birthplace">
+          </label>
+
+          <label>
+            Date of Birth
+            <input type="date" name="dob">
+          </label>
+
+          <label>
+            Date of Death
+            <input type="date" name="dod">
+          </label>
+
           <button class="button" type="submit">Add Artist</button>
         </form>
       </section>
@@ -203,6 +224,7 @@ app.get("/add-artist", requireLogin, asyncHandler(async (req, res) => {
 app.post("/add-artist", requireLogin, asyncHandler(async (req, res) => { 
   const name = req.body.name?.trim();
   const dob = req.body.dob || null;
+  const dod = req.body.dod || null;
   const birthplace = req.body.birthplace?.trim() || null;
 
   if (!name) {
@@ -211,9 +233,9 @@ app.post("/add-artist", requireLogin, asyncHandler(async (req, res) => {
   }
   
   await pool.query(
-    `INSERT INTO Artist (Artist_Name, Date_of_Birth, Birth_Place)
-    VALUES (?, ?, ?)`, 
-    [name, dob, birthplace]
+    `INSERT INTO Artist (Artist_Name, Birth_Place, Date_of_Birth, Date_of_Death)
+    VALUES (?, ?, ?, ?)`, 
+    [name, birthplace, dob, dod]
   );
 
   setFlash(req, "Artist added successfully.");
