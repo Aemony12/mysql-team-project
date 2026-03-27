@@ -17,7 +17,7 @@ BEGIN
         SET MESSAGE_TEXT = 'Event capacity exceeded';
     END IF;
 END;
--- 
+-- send message to admin when a new event registration is made // change
 -- trigger to check if artist has been added already
 --@Block
 CREATE TRIGGER trigger_check_artist_exists
