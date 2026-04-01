@@ -36,7 +36,7 @@ function renderPage({ title, user, content }) {
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="/">Museum Login</a>
+    <a class="brand" href="/">Museum Portal</a>
     <nav>
       <a href="/">Home</a>
       ${user ? '<a href="/dashboard">Dashboard</a>' : '<a href="/login">Login</a>'}
@@ -48,18 +48,6 @@ function renderPage({ title, user, content }) {
   </main>
 </body>
 </html>`;
-}
-
-function roleText(role) {
-  if (role === "employee") {
-    return "This account is marked as employee access.";
-  }
-
-  if (role === "supervisor") {
-    return "This account is marked as supervisor access.";
-  }
-
-  return "This account is marked as standard user access.";
 }
 
 function escapeHtml(value) {
@@ -101,15 +89,29 @@ function isStaff(user) {
   return user && (user.role === "employee" || user.role === "supervisor");
 }
 
+function isSupervisor(user) {
+  return user && user.role === "supervisor";
+}
+
+function isEmployee(user) {
+  return user && user.role === "employee";
+}
+
+function isMember(user) {
+  return user && user.role === "user";
+}
+
 module.exports = {
   asyncHandler,
   escapeHtml,
   formatDateInput,
   formatDisplayDate,
+  isEmployee,
+  isMember,
   isStaff,
+  isSupervisor,
   renderFlash,
   renderPage,
   requireLogin,
-  roleText,
   setFlash,
 };
