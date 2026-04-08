@@ -11,7 +11,7 @@ const {
 } = require("../helpers");
 
 function registerDashboardRoutes(app, { pool }) {
-  app.get("/dashboard", requireLogin, (req, res) => {
+  app.get("/dashboard", requireLogin, async (req, res) => {
     const user = req.session.user;
     if (!isEmployee(user) && !isSupervisor(user)) {
       return res.send(renderPage({
@@ -161,6 +161,35 @@ function registerDashboardRoutes(app, { pool }) {
       `;
     }
 
+    const [notifications] = await pool.query(
+      `SELECT * FROM manager_notifications WHERE is_read = FALSE ORDER BY created_at DESC`
+    );
+
+    const notificationsHtml = notifications.length > 0
+      ? `
+        <section class="dashboard-section notifications-section">
+          <h2>Notifications <span class="badge">${notifications.length}</span></h2>
+          <ul class="notification-list">
+            ${notifications.map(n => `
+              <li class="notification-item">
+                <span class="notification-message">${escapeHtml(n.message)}</span>
+                <span class="notification-time">${new Date(n.created_at).toLocaleString()}</span>
+                <form method="post" action="/notifications/${n.notification_id}/read" style="display:inline">
+                  <button class="button button-secondary button-small" type="submit">Dismiss</button>
+                </form>
+              </li>
+            `).join("")}
+          </ul>
+          <form method="post" action="/notifications/clear">
+            <button class="button button-secondary" type="submit">Clear All</button>
+          </form>
+        </section>`
+      : `
+        <section class="dashboard-section notifications-section">
+          <h2>Notifications</h2>
+          <p class="muted">No new notifications.</p>
+        </section>`;
+
     return res.send(renderPage({
       title: "Supervisor Dashboard",
       user,
@@ -174,6 +203,7 @@ function registerDashboardRoutes(app, { pool }) {
           <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
         </dl>
         ${renderFlash(req)}
+        ${notificationsHtml}
         <section class="dashboard-section">
           <h2>Collections Management</h2>
           <div class="button-row dashboard-actions">
@@ -216,6 +246,18 @@ function registerDashboardRoutes(app, { pool }) {
     }));
   });
 
+  app.post("/notifications/:id/read", requireLogin, async (req, res) => {
+    await pool.query(
+      `UPDATE manager_notifications SET is_read = TRUE WHERE notification_id = ?`,
+      [req.params.id]
+    );
+    res.redirect("/dashboard");
+  });
+
+  app.post("/notifications/clear", requireLogin, async (req, res) => {
+    await pool.query(`UPDATE manager_notifications SET is_read = TRUE`);
+    res.redirect("/dashboard");
+  });
 }
 
 module.exports = { registerDashboardRoutes };

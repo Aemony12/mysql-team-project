@@ -4,20 +4,33 @@ CREATE TRIGGER trigger_check_event_capacity
 BEFORE INSERT ON event_registration
 FOR EACH ROW
 BEGIN
-    IF (
-        (SELECT COUNT(*) 
-         FROM event_registration 
-         WHERE Event_ID = NEW.Event_ID)
-        >=
-        (SELECT Max_capacity 
-         FROM Event 
-         WHERE Event_ID = NEW.Event_ID)
+    DECLARE current_count INT;
+    DECLARE max_cap INT;
+    DECLARE event_name VARCHAR(30);
+
+    SELECT COUNT(*) INTO current_count
+    FROM event_registration
+    WHERE Event_ID = NEW.Event_ID;
+
+    SELECT Max_capacity, event_Name INTO max_cap, event_name
+    FROM Event
+    WHERE Event_ID = NEW.Event_ID;
+
+    IF(
+        current_count >= max_cap
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Event capacity exceeded';
+        SET MESSAGE_TEXT = 'Event is fully booked';
+    END IF;
+
+    IF(
+        current_count + 1 > max_cap
+    ) THEN
+        INSERT INTO manager_notifications (source_table, source_id, message)
+        VALUES ('Event', NEW.Event_ID, CONCAT('Event "', event_name, '" is now fully booked'));
     END IF;
 END;
--- send message to admin when a new event registration is made // change
+
 -- trigger to check if artist has been added already
 --@Block
 CREATE TRIGGER trigger_check_artist_exists
@@ -100,3 +113,68 @@ BEGIN
 END;
 
 --@Block
+-- trigger to reduce stock quantity in gift shop when a sale is made
+CREATE TRIGGER trigger_reduce_gift_shop_stock
+AFTER INSERT ON Gift_Shop_Sale_Line
+FOR EACH ROW
+BEGIN
+    UPDATE Gift_Shop_Item
+    SET Stock_Quantity = Stock_Quantity - NEW.Quantity
+    WHERE Gift_Shop_Item_ID = NEW.Gift_Shop_Item_ID;
+END;
+
+--@Block
+-- trigger to alert manager when stock quantity of an item in the gift shop is low
+CREATE TRIGGER trigger_low_stock_alert
+AFTER UPDATE ON Gift_Shop_Item
+FOR EACH ROW
+BEGIN
+    IF NEW.Stock_Quantity <= 5 AND OLD.Stock_Quantity > 5 THEN
+        INSERT INTO manager_notifications (source_table, source_id, message)
+        VALUES (
+            'Gift_Shop_Item',
+            NEW.Gift_Shop_Item_ID,
+            CONCAT('Low stock alert: "', NEW.Name_of_Item, '" has only ', NEW.Stock_Quantity, ' units remaining.')
+        );
+    END IF;
+END;
+
+--@Block
+-- trigger to prevent sale of items in the gift shop if stock quantity is insufficient
+CREATE TRIGGER trigger_check_gift_shop_stock
+BEFORE INSERT ON Gift_Shop_Sale_Line
+FOR EACH ROW
+BEGIN
+    DECLARE available INT;
+
+    SELECT Stock_Quantity INTO available
+    FROM Gift_Shop_Item
+    WHERE Gift_Shop_Item_ID = NEW.Gift_Shop_Item_ID;
+
+    IF available < NEW.Quantity THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient stock for this item';
+    END IF;
+END;
+
+--@Block
+-- trigger to alert manager when an employee's salary exceeds that of their supervisor
+CREATE TRIGGER trigger_salary_violation
+BEFORE INSERT ON Employee
+FOR EACH ROW
+BEGIN
+    IF NEW.Salary IS NOT NULL AND NEW.Supervisor_ID IS NOT NULL THEN
+        IF NEW.Salary > (
+            SELECT Salary FROM Employee
+            WHERE Employee_ID = NEW.Supervisor_ID
+        ) THEN
+            INSERT INTO manager_notifications (source_table, source_id, message)
+            VALUES (
+                'Employee',
+                NEW.Supervisor_ID,
+                CONCAT('Salary violation: ', NEW.First_Name, ' ', NEW.Last_Name,
+                       ' has a higher salary than their supervisor (Employee_ID: ', NEW.Supervisor_ID, ')')
+            );
+        END IF;
+    END IF;
+END;
