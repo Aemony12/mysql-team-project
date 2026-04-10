@@ -102,7 +102,14 @@ function registerReportsRoutes(app, { pool }) {
           <button class="button" type="submit">Run Report</button>
         </form>
         <table>
-          <thead><tr><th>Visit Date</th><th>Ticket Type</th><th>Tickets Sold</th><th>Revenue</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Visit Date</th>
+              <th>Ticket Type</th>
+              <th>Tickets Sold</th>
+              <th>Revenue</th>
+            </tr>
+          </thead>
           <tbody>${ticketSalesHtml || '<tr><td colspan="4">No ticket sales matched the selected dates.</td></tr>'}</tbody>
         </table>
       </section>
@@ -115,7 +122,14 @@ function registerReportsRoutes(app, { pool }) {
           <button class="button" type="submit">Run Report</button>
         </form>
         <table>
-          <thead><tr><th>Employee</th><th>Position</th><th>Department</th><th>Supervisor</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Position</th>
+              <th>Department</th>
+              <th>Supervisor</th>
+            </tr>
+          </thead>
           <tbody>${employeeHtml || '<tr><td colspan="4">No employees matched the selected department.</td></tr>'}</tbody>
         </table>
       </section>
@@ -131,7 +145,13 @@ function registerReportsRoutes(app, { pool }) {
           <button class="button" type="submit">Run Report</button>
         </form>
         <table>
-          <thead><tr><th>Exhibition</th><th>Tickets Sold</th><th>Revenue</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Exhibition</th>
+              <th>Tickets Sold</th>
+              <th>Revenue</th>
+            </tr>
+          </thead>
           <tbody>${revenueHtml || '<tr><td colspan="3">No exhibition revenue matched the selected dates.</td></tr>'}</tbody>
         </table>
       </section>

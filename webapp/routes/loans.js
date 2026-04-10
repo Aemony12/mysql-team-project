@@ -97,8 +97,13 @@ function registerLoansRoutes(app, { pool }) {
         <table>
           <thead>
             <tr>
-              <th>ID</th><th>Name</th><th>City</th><th>Country</th>
-              <th>Contact</th><th>Email</th><th>Actions</th>
+              <th>ID</th>
+              <th>Name</th>
+              <th>City</th>
+              <th>Country</th>
+              <th>Contact</th>
+              <th>Email</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -209,10 +214,10 @@ function registerLoansRoutes(app, { pool }) {
         I.Institution_Name,
         CONCAT(E.First_Name, ' ', E.Last_Name) AS Approved_By_Name
       FROM Artwork_Loan AL
-      JOIN Artwork     AW ON AL.Artwork_ID     = AW.Artwork_ID
-      JOIN Artist      AR ON AW.Artist_ID      = AR.Artist_ID
+      JOIN Artwork AW ON AL.Artwork_ID = AW.Artwork_ID
+      JOIN Artist AR ON AW.Artist_ID = AR.Artist_ID
       JOIN Institution I  ON AL.Institution_ID = I.Institution_ID
-      LEFT JOIN Employee E ON AL.Approved_By   = E.Employee_ID
+      LEFT JOIN Employee E ON AL.Approved_By = E.Employee_ID
       ${whereClause}
       ORDER BY AL.End_Date ASC
     `, queryParams);
@@ -314,15 +319,22 @@ function registerLoansRoutes(app, { pool }) {
           <label>Filter by status:
             <select name="status" onchange="this.form.submit()">
               <option value="Active" ${filterStatus === "Active" ? "selected" : ""}>Active only</option>
-              <option value="All"    ${filterStatus === "All"    ? "selected" : ""}>All loans</option>
+              <option value="All" ${filterStatus === "All" ? "selected" : ""}>All loans</option>
             </select>
           </label>
         </form>
         <table>
           <thead>
             <tr>
-              <th>#</th><th>Artwork</th><th>Institution</th><th>Type</th>
-              <th>Start</th><th>End</th><th>Insurance</th><th>Status</th><th>Actions</th>
+              <th>#</th>
+              <th>Artwork</th>
+              <th>Institution</th>
+              <th>Type</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Insurance</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>

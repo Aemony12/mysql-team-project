@@ -102,7 +102,7 @@ CREATE PROCEDURE ReportActiveLoans()
 BEGIN
     SELECT
         AL.Loan_ID,
-        AW.Title           AS Artwork_Title,
+        AW.Title AS Artwork_Title,
         AR.Artist_Name,
         I.Institution_Name,
         AL.Loan_Type,
@@ -112,10 +112,10 @@ BEGIN
         AL.Status,
         CONCAT(E.First_Name, ' ', E.Last_Name) AS Approved_By_Name
     FROM Artwork_Loan AL
-    JOIN Artwork     AW ON AL.Artwork_ID     = AW.Artwork_ID
-    JOIN Artist      AR ON AW.Artist_ID      = AR.Artist_ID
+    JOIN Artwork AW ON AL.Artwork_ID = AW.Artwork_ID
+    JOIN Artist AR ON AW.Artist_ID = AR.Artist_ID
     JOIN Institution I  ON AL.Institution_ID = I.Institution_ID
-    LEFT JOIN Employee E ON AL.Approved_By   = E.Employee_ID
+    LEFT JOIN Employee E ON AL.Approved_By = E.Employee_ID
     WHERE AL.Status = 'Active'
     ORDER BY AL.End_Date ASC;
 END$$

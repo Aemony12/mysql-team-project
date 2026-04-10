@@ -43,7 +43,7 @@ function registerToursRoutes(app, { pool }) {
         EX.Exhibition_Name,
         (SELECT COUNT(*) FROM Tour_Registration TR WHERE TR.Tour_ID = T.Tour_ID) AS Registered_Count
       FROM Tour T
-      LEFT JOIN Employee  E  ON T.Guide_ID      = E.Employee_ID
+      LEFT JOIN Employee E ON T.Guide_ID = E.Employee_ID
       LEFT JOIN Exhibition EX ON T.Exhibition_ID = EX.Exhibition_ID
       ORDER BY T.Tour_Date DESC, T.Start_Time
     `);
@@ -130,9 +130,15 @@ function registerToursRoutes(app, { pool }) {
         <table>
           <thead>
             <tr>
-              <th>#</th><th>Name</th><th>Date</th><th>Time</th>
-              <th>Guide</th><th>Exhibition</th><th>Language</th>
-              <th>Capacity</th><th>Actions</th>
+              <th>#</th>
+              <th>Name</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Guide</th>
+              <th>Exhibition</th>
+              <th>Language</th>
+              <th>Capacity</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -145,10 +151,8 @@ function registerToursRoutes(app, { pool }) {
   }));
 
 
-  // ---------------------------------------------------------------
   // POST /tours
   // Creates a new Tour record.
-  // ---------------------------------------------------------------
   app.post("/tours", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const {
       tour_name: tourName,
@@ -184,11 +188,9 @@ function registerToursRoutes(app, { pool }) {
   }));
 
 
-  // ---------------------------------------------------------------
   // POST /delete-tour
   // Deletes a tour. ON DELETE CASCADE in Tour_Registration means
   // all registrations for this tour are automatically removed too.
-  // ---------------------------------------------------------------
   app.post("/delete-tour", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const { tour_id: tourId } = req.body;
     if (!tourId) {
@@ -271,7 +273,13 @@ function registerToursRoutes(app, { pool }) {
         <p><a href="/tours">← Back to all tours</a></p>
         <table>
           <thead>
-            <tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th><th>Action</th></tr>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Registered</th>
+              <th>Action</th>
+            </tr>
           </thead>
           <tbody>
             ${rosterRows || '<tr><td colspan="5">No registrations yet.</td></tr>'}
@@ -283,10 +291,8 @@ function registerToursRoutes(app, { pool }) {
   }));
 
 
-  // ---------------------------------------------------------------
   // POST /tours/remove-registration  (Supervisor)
   // Removes a single member from a tour (supervisor use only).
-  // ---------------------------------------------------------------
   app.post("/tours/remove-registration", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const { registration_id: regId, tour_id: tourId } = req.body;
     if (!regId) {
@@ -406,8 +412,14 @@ function registerToursRoutes(app, { pool }) {
         <table>
           <thead>
             <tr>
-              <th>Tour</th><th>Date</th><th>Time</th><th>Exhibition</th>
-              <th>Guide</th><th>Language</th><th>Availability</th><th>Action</th>
+              <th>Tour</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Exhibition</th>
+              <th>Guide</th>
+              <th>Language</th>
+              <th>Availability</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -420,7 +432,14 @@ function registerToursRoutes(app, { pool }) {
         <h2>My Registrations</h2>
         <table>
           <thead>
-            <tr><th>Tour</th><th>Date</th><th>Time</th><th>Exhibition</th><th>Registered On</th><th>Action</th></tr>
+            <tr>
+              <th>Tour</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Exhibition</th>
+              <th>Registered On</th>
+              <th>Action</th>
+            </tr>
           </thead>
           <tbody>
             ${myRows || '<tr><td colspan="6">You have no tour registrations.</td></tr>'}
