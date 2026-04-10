@@ -94,7 +94,15 @@ function registerQueriesRoutes(app, { pool }) {
           <button class="button" type="submit">Run Query</button>
         </form>
         <table>
-          <thead><tr><th>Title</th><th>Artist</th><th>Type</th><th>Style</th><th>Period</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Artist</th>
+              <th>Type</th>
+              <th>Style</th>
+              <th>Period</th>
+            </tr>
+          </thead>
           <tbody>${artworkRows || '<tr><td colspan="5">No artwork matched the selected filters.</td></tr>'}</tbody>
         </table>
       </section>
@@ -110,7 +118,13 @@ function registerQueriesRoutes(app, { pool }) {
           <button class="button" type="submit">Run Query</button>
         </form>
         <table>
-          <thead><tr><th>Exhibition</th><th>Starts</th><th>Ends</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Exhibition</th>
+              <th>Starts</th>
+              <th>Ends</th>
+            </tr>
+          </thead>
           <tbody>${exhibitionRows || '<tr><td colspan="3">No exhibitions matched the selected dates.</td></tr>'}</tbody>
         </table>
       </section>
@@ -126,7 +140,14 @@ function registerQueriesRoutes(app, { pool }) {
           <button class="button" type="submit">Run Query</button>
         </form>
         <table>
-          <thead><tr><th>Item</th><th>Category</th><th>Price</th><th>Stock</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+            </tr>
+          </thead>
           <tbody>${inventoryRows || '<tr><td colspan="4">No inventory matched the selected filters.</td></tr>'}</tbody>
         </table>
       </section>

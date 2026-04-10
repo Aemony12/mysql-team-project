@@ -187,7 +187,14 @@ function registerGiftShopRoutes(app, { pool }) {
       <section class="card narrow">
         <h2>Recent Sales</h2>
         <table>
-          <thead><tr><th>ID</th><th>Date</th><th>Employee ID</th><th>Actions</th></tr></thead>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Date</th>
+              <th>Employee ID</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
           <tbody>${saleRows || '<tr><td colspan="4">No sales found.</td></tr>'}</tbody>
         </table>
       </section>
@@ -314,7 +321,16 @@ function registerGiftShopRoutes(app, { pool }) {
       <section class="card narrow">
         <h2>Items in Sales</h2>
         <table>
-          <thead><tr><th>Sale ID</th><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th>Actions</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Sale ID</th>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Total</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
           <tbody>${lineRows || '<tr><td colspan="6">No items found.</td></tr>'}</tbody>
         </table>
       </section>

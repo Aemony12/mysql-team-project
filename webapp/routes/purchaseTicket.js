@@ -123,8 +123,8 @@ function registerPurchaseTicketRoutes(app, { pool }) {
     let pricePerTicket;
     switch (ticketType) {
       case "General Admission": pricePerTicket = 20.00; break;
-      case "Senior":            pricePerTicket = 15.00; break;
-      case "Child":             pricePerTicket = 10.00; break;
+      case "Senior": pricePerTicket = 15.00; break;
+      case "Child": pricePerTicket = 10.00; break;
       default:
         setFlash(req, "Invalid ticket type selected.");
         return res.redirect("/purchase-ticket");
