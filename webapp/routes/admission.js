@@ -202,7 +202,7 @@ function registerAdmissionRoutes(app, { pool }) {
           <label>Email
             <input type="email" name="email" value="${editTicket ? escapeHtml(editTicket.Email || "") : ""}">
           </label>
-          ${editTicket ? `<button class="button" type="submit" form="ticket-form">Update Ticket</button>` : ""}
+          <button class="button" type="submit">${editTicket ? "Update Ticket" : "Add Ticket"}</button>
         </form>
       </section>
       <section class="card narrow">
