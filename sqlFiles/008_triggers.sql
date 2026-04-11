@@ -5,7 +5,10 @@ USE museumdb;
 
 DELIMITER $$
 
--- checks to ensure that the number of registrations for an event does not exceed the maximum capacity of the event
+-- Trigger: block event registration when event is full
+-- Counts current signups and compares to Max_capacity from the Event table.
+-- current_count >= max_cap fires SIGNAL to block the insert.
+-- If this registration fills the last spot (current_count + 1 > max_cap), notifies the manager.
 DROP TRIGGER IF EXISTS trigger_check_event_capacity$$
 CREATE TRIGGER trigger_check_event_capacity
 BEFORE INSERT ON event_registration
@@ -38,7 +41,9 @@ BEGIN
     END IF;
 END$$
 
--- trigger to check if artist has been added already
+-- Trigger: prevent adding a duplicate artist
+-- SELECT 1 just checks existence. Both name AND birthdate must match,
+-- so two artists with the same name but different birthdays are still allowed.
 DROP TRIGGER IF EXISTS trigger_check_artist_exists$$
 CREATE TRIGGER trigger_check_artist_exists
 BEFORE INSERT ON Artist
@@ -54,7 +59,9 @@ BEGIN
     END IF;
 END$$
 
--- prevent using membership after expiration date
+-- Trigger: block ticket sale if membership is expired
+-- Only runs if a Membership_ID was provided (IS NOT NULL).
+-- Date_Exited < NEW.Visit_Date means the membership expired before the visit date.
 DROP TRIGGER IF EXISTS trigger_check_membership_validity$$
 CREATE TRIGGER trigger_check_membership_validity
 BEFORE INSERT ON Ticket
@@ -73,7 +80,9 @@ BEGIN
     END IF;
 END$$
 
--- prevent scheduling an employee for overlapping shifts
+-- Trigger: prevent scheduling an employee for overlapping shifts
+-- Checks same employee, same day. The overlap formula is:
+-- Start_Time < NEW.End_Time AND End_Time > NEW.Start_Time catches any partial or full overlap.
 DROP TRIGGER IF EXISTS trigger_check_employee_schedule$$
 CREATE TRIGGER trigger_check_employee_schedule
 BEFORE INSERT ON Schedule
@@ -92,7 +101,9 @@ BEGIN
     END IF;
 END$$
 
--- prevent deleting artwork that is currently on display in an exhibition
+-- Trigger: block deleting artwork that is on display
+-- OLD.Artwork_ID refers to the row being deleted.
+-- If a matching row exists in Exhibition_Artwork, the delete is blocked.
 DROP TRIGGER IF EXISTS trigger_prevent_artwork_deletion$$
 CREATE TRIGGER trigger_prevent_artwork_deletion
 BEFORE DELETE ON Artwork
@@ -107,7 +118,9 @@ BEGIN
     END IF;
 END$$
 
--- prevent date of death from being before date of birth for artists
+-- Trigger: validate artist birth and death dates
+-- Only runs if Date_of_Death was provided (IS NOT NULL).
+-- If death date is earlier than birth date, SIGNAL blocks the insert.
 DROP TRIGGER IF EXISTS trigger_check_artist_dates$$
 CREATE TRIGGER trigger_check_artist_dates
 BEFORE INSERT ON Artist
@@ -119,7 +132,9 @@ BEGIN
     END IF;
 END$$
 
--- trigger to reduce stock quantity in gift shop when a sale is made
+-- Trigger: reduce gift shop stock when a sale is made
+-- Fires AFTER insert so the sale line is already saved.
+-- Subtracts NEW.Quantity from the item's Stock_Quantity automatically.
 DROP TRIGGER IF EXISTS trigger_reduce_gift_shop_stock$$
 CREATE TRIGGER trigger_reduce_gift_shop_stock
 AFTER INSERT ON Gift_Shop_Sale_Line
@@ -130,7 +145,10 @@ BEGIN
     WHERE Gift_Shop_Item_ID = NEW.Gift_Shop_Item_ID;
 END$$
 
--- keep gift shop stock accurate when a sale line is edited
+-- Trigger: keep stock accurate when a sale line is edited
+-- First UPDATE adds OLD.Quantity back (undoes the original sale).
+-- Second UPDATE subtracts NEW.Quantity (applies the updated amount).
+-- Uses both OLD and NEW in case the item itself was also changed.
 DROP TRIGGER IF EXISTS trigger_update_gift_shop_stock$$
 CREATE TRIGGER trigger_update_gift_shop_stock
 AFTER UPDATE ON Gift_Shop_Sale_Line
@@ -145,7 +163,9 @@ BEGIN
     WHERE Gift_Shop_Item_ID = NEW.Gift_Shop_Item_ID;
 END$$
 
--- restore stock if a sale line is removed
+-- Trigger: restore gift shop stock when a sale line is deleted
+-- OLD.Quantity holds the quantity from the deleted row.
+-- Adds it back to inventory with Stock_Quantity + OLD.Quantity.
 DROP TRIGGER IF EXISTS trigger_restore_gift_shop_stock$$
 CREATE TRIGGER trigger_restore_gift_shop_stock
 AFTER DELETE ON Gift_Shop_Sale_Line
@@ -156,7 +176,9 @@ BEGIN
     WHERE Gift_Shop_Item_ID = OLD.Gift_Shop_Item_ID;
 END$$
 
--- trigger to alert manager when stock quantity of an item in the gift shop is low
+-- Trigger: alert manager when gift shop stock runs low
+-- NEW.Stock_Quantity <= 5 AND OLD.Stock_Quantity > 5 means it only fires
+-- when crossing the threshold downward, not on every stock update.
 DROP TRIGGER IF EXISTS trigger_low_stock_alert$$
 CREATE TRIGGER trigger_low_stock_alert
 AFTER UPDATE ON Gift_Shop_Item
@@ -172,7 +194,9 @@ BEGIN
     END IF;
 END$$
 
--- trigger to prevent sale of items in the gift shop if stock quantity is insufficient
+-- Trigger: block gift shop sale if there is not enough stock
+-- DECLARE available INT creates a local variable, SELECT ... INTO loads the current stock.
+-- If available < NEW.Quantity, not enough stock, so SIGNAL blocks the insert.
 DROP TRIGGER IF EXISTS trigger_check_gift_shop_stock$$
 CREATE TRIGGER trigger_check_gift_shop_stock
 BEFORE INSERT ON Gift_Shop_Sale_Line
@@ -190,7 +214,9 @@ BEGIN
     END IF;
 END$$
 
--- trigger to alert manager when an employee's salary exceeds that of their supervisor
+-- Trigger: alert manager when an employee earns more than their supervisor
+-- Subquery looks up the supervisor's salary using NEW.Supervisor_ID and compares inline.
+-- No SIGNAL here — the employee is still saved, management just gets notified.
 DROP TRIGGER IF EXISTS trigger_salary_violation$$
 CREATE TRIGGER trigger_salary_violation
 BEFORE INSERT ON Employee
@@ -212,7 +238,10 @@ BEGIN
     END IF;
 END$$
 
--- Trigger: Auto Flag Restoration
+-- Trigger: auto-flag artwork for restoration when condition is poor or critical
+-- IN ('Poor', 'Critical') checks both values at once.
+-- SET NEW.Restoration_Required = TRUE changes the column before the row is saved,
+-- which is only possible in a BEFORE INSERT trigger.
 DROP TRIGGER IF EXISTS trigger_auto_flag_restoration$$
 CREATE TRIGGER trigger_auto_flag_restoration
 BEFORE INSERT ON Artwork_Condition_Report
@@ -223,7 +252,10 @@ BEGIN
     END IF;
 END$$
 
--- Trigger: Check Artwork On Loan
+-- Trigger: block adding artwork to an exhibition if it is out on loan
+-- Loan_Type = 'Outgoing' means we lent it out (incoming loans don't block display).
+-- Status = 'Active' ignores returned loans. CURDATE() BETWEEN Start_Date AND End_Date
+-- confirms the loan is still ongoing right now.
 DROP TRIGGER IF EXISTS trigger_check_artwork_on_loan$$
 CREATE TRIGGER trigger_check_artwork_on_loan
 BEFORE INSERT ON Exhibition_Artwork
@@ -242,7 +274,9 @@ BEGIN
     END IF;
 END$$
 
--- Trigger: Check Tour Capacity
+-- Trigger: block tour registration when the tour is full
+-- Two inline subqueries: one counts current registrations, the other gets Max_Capacity.
+-- If count >= capacity, SIGNAL blocks the insert.
 DROP TRIGGER IF EXISTS trigger_check_tour_capacity$$
 CREATE TRIGGER trigger_check_tour_capacity
 BEFORE INSERT ON Tour_Registration

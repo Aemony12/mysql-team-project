@@ -60,7 +60,7 @@ function registerGiftShopRoutes(app, { pool }) {
             <input type="text" name="name" 
             value="${editItem ? escapeHtml(editItem.Name_of_Item) : ""}" required>
           </label>
-          <label>Price
+          <label>Price ($)
             <input type="number" step="0.01" name="price" 
              value="${editItem ? editItem.Price_of_Item : ""}" required>
           </label>

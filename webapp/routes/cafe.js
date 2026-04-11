@@ -55,8 +55,8 @@ function registerCafeRoutes(app, { pool }) {
             <input type="text" name="food_name"
             value="${editFood ? escapeHtml(editFood.Food_Name) : ""}" required>
           </label>
-          <label>Food Price
-            <input type="number" step="0.01" name="food_price" 
+          <label>Food Price ($)
+            <input type="number" step="0.01" name="food_price"
             value="${editFood ? editFood.Food_Price : ""}" required>
           </label>
          <button class="button" type="submit">
