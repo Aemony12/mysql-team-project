@@ -1,6 +1,7 @@
 --employee and departments creation
 
---create departments and employees for each department
+
+--@block
 INSERT INTO Department (Department_Name, Manager_ID, Created_By, Created_At, Updated_By, Updated_AT) VALUES 
 ('Curatorial', NULL, 'system', CURDATE(), 'system', CURDATE()),
 ('Conservation', NULL, 'system', CURDATE(), 'system', CURDATE()),
@@ -9,6 +10,7 @@ INSERT INTO Department (Department_Name, Manager_ID, Created_By, Created_At, Upd
 ('Education', NULL, 'system', CURDATE(), 'system', CURDATE()),
 ('Marketing', NULL, 'system', CURDATE(), 'system', CURDATE());
 
+--@block
 INSERT INTO Employee (Last_Name, First_Name, Date_Hired, Email, Employee_Address, Date_of_Birth, Salary, Employee_Role, Department_ID, Created_By, Created_At) VALUES
 -- Curatorial (Department_ID = 1)
 ('Chen', 'Wei', '2020-03-15', 'wei.chen@museum.org', '123 Museum Ave, New York, NY', '1975-06-10', 85000.00, 'Chief Curator', 1, 'system', CURDATE()),
@@ -50,24 +52,11 @@ INSERT INTO Employee (Last_Name, First_Name, Date_Hired, Email, Employee_Address
 ('King', 'Michelle', '2021-03-17', 'michelle.king@museum.org', '741 Content Dr, Bronx, NY', '1993-02-28', 55000.00, 'Content Creator', 6, 'system', CURDATE()),
 ('Scott', 'Brian', '2022-08-08', 'brian.scott@museum.org', '852 Analytics St, Staten Island, NY', '1990-12-12', 49000.00, 'Marketing Coord', 6, 'system', CURDATE());
 
--- Update department managers (each manager must be an employee in that department)
+
+--@block
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Chief Curator' AND Department_ID = 1) WHERE Department_ID = 1;
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Head Conservator' AND Department_ID = 2) WHERE Department_ID = 2;
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Lead Exhibit Des' AND Department_ID = 3) WHERE Department_ID = 3;
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Visitor Svcs Mgr' AND Department_ID = 4) WHERE Department_ID = 4;
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Dir of Education' AND Department_ID = 5) WHERE Department_ID = 5;
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Marketing Dir' AND Department_ID = 6) WHERE Department_ID = 6;
-
-
---schedule (employee shifts)
-INSERT INTO Schedule (Shift_Date, Start_Time, End_Time, Employee_ID, Exhibition_ID, Duty, Created_By, Created_At, Updated_By, Updated_At) VALUES
-('2026-04-15', '09:00:00', '17:00:00', 88, 1, 'Supervisor', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-15', '10:00:00', '18:00:00', 89, 1, 'Gallery Attendant', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-16', '09:00:00', '17:00:00', 90, 1, 'Security', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-16', '12:00:00', '20:00:00', 91, 1, 'Guide', 'system', CURDATE(), 'system', CURDATE()),
-('2026-06-12', '09:00:00', '17:00:00', 92, 2, 'Supervisor', 'system', CURDATE(), 'system', CURDATE()),
-('2026-06-12', '10:00:00', '18:00:00', 93, 2, 'Gallery Attendant', 'system', CURDATE(), 'system', CURDATE()),
-('2026-06-13', '09:00:00', '17:00:00', 94, 2, 'Security', 'system', CURDATE(), 'system', CURDATE()),
-('2026-06-13', '11:00:00', '19:00:00', 95, 2, 'Guide', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-20', '09:00:00', '17:00:00', 96, 1, 'Janitor', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-21', '09:00:00', '17:00:00', 97, 1, 'Maintenance', 'system', CURDATE(), 'system', CURDATE());

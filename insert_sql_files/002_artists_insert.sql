@@ -18,10 +18,7 @@ INSERT INTO artist (Artist_Name, Date_of_Birth, Date_of_Death, Birth_Place) VALU
 ('Nicolas Lancret',               '1690-01-22', '1743-09-14', 'Paris'),
 ('Claude Monet',                  '1840-01-01', '1926-01-01', 'Paris');
 
---artwork insert
 --@block
--- Insert artworks only for the specified artists (12 records)
--- Titles shortened to fit VARCHAR(30)
 
 INSERT INTO Artwork (Title, Type, Date_Created, Time_Period, Art_Style, Artist_ID, Created_By, Created_At)
 SELECT 
@@ -60,20 +57,17 @@ FROM (
 ) tmp
 JOIN Artist a ON a.Artist_Name = tmp.Artist_Name;
 
---artwork_condition_report
+--@block
 INSERT INTO Artwork_Condition_Report (Artwork_ID, Condition_Status, Report_Date, Inspector_ID, Restoration_Required, Notes, Created_By, Created_At, Updated_By, Updated_At) VALUES
-(4, 'Excellent', '2026-01-10', 72, FALSE, 'No issues; stable', 'system', CURDATE(), 'system', CURDATE()),
-(5, 'Good', '2026-01-15', 84, FALSE, 'Minor surface dust', 'system', CURDATE(), 'system', CURDATE()),
-(6, 'Fair', '2026-02-01', 90, FALSE, 'Slight fading on edges', 'system', CURDATE(), 'system', CURDATE()),
-(7, 'Poor', '2026-02-20', 101, TRUE, 'Cracked marble; restoration needed', 'system', CURDATE(), 'system', CURDATE()),
-(8, 'Critical', '2026-03-05', 75, TRUE, 'Severe paper discoloration and tears', 'system', CURDATE(), 'system', CURDATE()),
-(9, 'Good', '2026-03-12', 85, FALSE, 'Stable; minor scratches', 'system', CURDATE(), 'system', CURDATE()),
-(10, 'Excellent', '2026-03-18', 95, FALSE, 'Well preserved', 'system', CURDATE(), 'system', CURDATE()),
-(11, 'Fair', '2026-04-01', 102, FALSE, 'Some ink bleeding', 'system', CURDATE(), 'system', CURDATE()),
-(12, 'Good', '2026-04-05', 76, FALSE, 'Stable condition', 'system', CURDATE(), 'system', CURDATE()),
-(13, 'Poor', '2026-04-08', 87, TRUE, 'Paint flaking; requires conservation', 'system', CURDATE(), 'system', CURDATE()),
-(14, 'Excellent', '2026-04-10', 96, FALSE, 'Like new', 'system', CURDATE(), 'system', CURDATE()),
-(15, 'Good', '2026-04-12', 100, FALSE, 'Minor wear', 'system', CURDATE(), 'system', CURDATE());
-
-
-
+(1, 'Excellent', '2026-01-10', 6, FALSE, 'No issues; stable', 'system', CURDATE(), 'system', CURDATE()),
+(2, 'Good', '2026-01-15', 18, FALSE, 'Minor surface dust', 'system', CURDATE(), 'system', CURDATE()),
+(3, 'Fair', '2026-02-01', 24, FALSE, 'Slight fading on edges', 'system', CURDATE(), 'system', CURDATE()),
+(4, 'Poor', '2026-02-20', 35, TRUE, 'Cracked marble; restoration needed', 'system', CURDATE(), 'system', CURDATE()),
+(5, 'Critical', '2026-03-05', 9, TRUE, 'Severe paper discoloration and tears', 'system', CURDATE(), 'system', CURDATE()),
+(6, 'Good', '2026-03-12', 19, FALSE, 'Stable; minor scratches', 'system', CURDATE(), 'system', CURDATE()),
+(7, 'Excellent', '2026-03-18', 29, FALSE, 'Well preserved', 'system', CURDATE(), 'system', CURDATE()),
+(8, 'Fair', '2026-04-01', 36, FALSE, 'Some ink bleeding', 'system', CURDATE(), 'system', CURDATE()),
+(9, 'Good', '2026-04-05', 10, FALSE, 'Stable condition', 'system', CURDATE(), 'system', CURDATE()),
+(10, 'Poor', '2026-04-08', 21, TRUE, 'Paint flaking; requires conservation', 'system', CURDATE(), 'system', CURDATE()),
+(11, 'Excellent', '2026-04-10', 30, FALSE, 'Like new', 'system', CURDATE(), 'system', CURDATE()),
+(12, 'Good', '2026-04-12', 34, FALSE, 'Minor wear', 'system', CURDATE(), 'system', CURDATE());
