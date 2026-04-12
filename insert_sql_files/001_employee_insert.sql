@@ -60,18 +60,3 @@ UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Emplo
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Visitor Svcs Mgr' AND Department_ID = 4) WHERE Department_ID = 4;
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Dir of Education' AND Department_ID = 5) WHERE Department_ID = 5;
 UPDATE Department SET Manager_ID = (SELECT Employee_ID FROM Employee WHERE Employee_Role = 'Marketing Dir' AND Department_ID = 6) WHERE Department_ID = 6;
-
-
---@block
--- error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`schedule`, CONSTRAINT `fk_Schedule_Employee` FOREIGN KEY (`Employee_ID`) REFERENCES `employee` (`Employee_ID`))
-INSERT INTO Schedule (Shift_Date, Start_Time, End_Time, Employee_ID, Exhibition_ID, Duty, Created_By, Created_At, Updated_By, Updated_At) VALUES
-('2026-04-15', '09:00:00', '17:00:00', 88, 1, 'Supervisor', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-15', '10:00:00', '18:00:00', 89, 1, 'Gallery Attendant', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-16', '09:00:00', '17:00:00', 90, 1, 'Security', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-16', '12:00:00', '20:00:00', 91, 1, 'Guide', 'system', CURDATE(), 'system', CURDATE()),
-('2026-06-12', '09:00:00', '17:00:00', 92, 2, 'Supervisor', 'system', CURDATE(), 'system', CURDATE()),
-('2026-06-12', '10:00:00', '18:00:00', 93, 2, 'Gallery Attendant', 'system', CURDATE(), 'system', CURDATE()),
-('2026-06-13', '09:00:00', '17:00:00', 94, 2, 'Security', 'system', CURDATE(), 'system', CURDATE()),
-('2026-06-13', '11:00:00', '19:00:00', 95, 2, 'Guide', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-20', '09:00:00', '17:00:00', 96, 1, 'Janitor', 'system', CURDATE(), 'system', CURDATE()),
-('2026-04-21', '09:00:00', '17:00:00', 97, 1, 'Maintenance', 'system', CURDATE(), 'system', CURDATE());
