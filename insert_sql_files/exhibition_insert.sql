@@ -2,7 +2,7 @@
 
 
 -- Create two exhibitions
-
+--@block
 INSERT INTO Exhibition (Exhibition_Name, Starting_Date, Ending_Date)
 VALUES 
     ('Spring Collection 2026', CURDATE(), '2026-05-12'),
@@ -14,7 +14,7 @@ VALUES
 
 -- We'll use subqueries to find them by name.
 
-
+--@block
 -- Spring assignments (by artist)
 INSERT INTO Exhibition_Artwork (Display_Room, Date_Installed, Exhibition_ID, Artwork_ID, Created_By, Created_At)
 SELECT 
@@ -35,6 +35,7 @@ WHERE ar.Artist_Name IN (
     'Johann Paul Egell'
 );
 
+--@block
 -- Summer assignments (by artist)
 INSERT INTO Exhibition_Artwork (Display_Room, Date_Installed, Exhibition_ID, Artwork_ID, Created_By, Created_At)
 SELECT 
@@ -55,7 +56,8 @@ WHERE ar.Artist_Name IN (
     'Nicolas Lancret'
 );
 
---event insert
+--@block
+--error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`event`, CONSTRAINT `fk_Event_Coordinator` FOREIGN KEY (`coordinator_ID`) REFERENCES `employee` (`Employee_ID`))
 INSERT INTO Event (event_Name, start_Date, end_Date, member_only, coordinator_ID, created_by, created_at, updated_by, updated_at, Max_capacity) VALUES
 ('Spring Exhibition Opening Gala', '2026-04-15', '2026-04-15', FALSE, 1, 'system', CURDATE(), 'system', CURDATE(), 200),
 ('Art History: Renaissance', '2026-04-22', '2026-04-22', FALSE, 5, 'system', CURDATE(), 'system', CURDATE(), 80),
@@ -66,7 +68,8 @@ INSERT INTO Event (event_Name, start_Date, end_Date, member_only, coordinator_ID
 ('Summer Solstice Celebration', '2026-06-20', '2026-06-20', FALSE, 101, 'system', CURDATE(), 'system', CURDATE(), 250),
 ('Conservation Workshop', '2026-07-10', '2026-07-12', FALSE, 103, 'system', CURDATE(), 'system', CURDATE(), 25);
 
---event_registration insert
+--@block
+-- error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`event_registration`, CONSTRAINT `fk_Reg_Event` FOREIGN KEY (`Event_ID`) REFERENCES `event` (`event_ID`))
 INSERT INTO event_registration (Registration_Date, Event_ID, Membership_ID, Ticket_ID, Created_By, Created_At, Updated_By, Updated_At) VALUES
 ('2026-04-01', 49, 2, 1, 'system', CURDATE(), 'system', CURDATE()),
 ('2026-04-01', 49, 3, 2, 'system', CURDATE(), 'system', CURDATE()),
@@ -79,7 +82,8 @@ INSERT INTO event_registration (Registration_Date, Event_ID, Membership_ID, Tick
 ('2026-04-20', 51, 3, 2, 'system', CURDATE(), 'system', CURDATE()),
 ('2026-05-01', 54, 4, 3, 'system', CURDATE(), 'system', CURDATE());
 
---tours insert
+--@block
+-- error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`tour`, CONSTRAINT `fk_tour_guide` FOREIGN KEY (`Guide_ID`) REFERENCES `employee` (`Employee_ID`) ON DELETE SET NULL)
 INSERT INTO Tour (Tour_Name, Tour_Date, Start_Time, End_Time, Max_Capacity, Guide_ID, Exhibition_ID, Language, Created_By, Created_At, Updated_By, Updated_At) VALUES
 ('Renaissance Masterpieces Tour', '2026-04-16', '10:00:00', '11:30:00', 20, 74, 1, 'English', 'system', CURDATE(), 'system', CURDATE()),
 ('Spring Exhibition Highlights', '2026-04-17', '14:00:00', '15:30:00', 15, 78, 1, 'English', 'system', CURDATE(), 'system', CURDATE()),
@@ -90,7 +94,8 @@ INSERT INTO Tour (Tour_Name, Tour_Date, Start_Time, End_Time, Max_Capacity, Guid
 ('Behind the Scenes Conservation', '2026-07-05', '11:00:00', '12:30:00', 30, 88, 2, 'English', 'system', CURDATE(), 'system', CURDATE()),
 ('Sunday Morning Classics', '2026-04-23', '09:30:00', '11:00:00', 20, 94, 1, 'English', 'system', CURDATE(), 'system', CURDATE());
 
---tour registration using membership ID
+--@block
+--error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`tour_registration`, CONSTRAINT `fk_tour_reg_tour` FOREIGN KEY (`Tour_ID`) REFERENCES `tour` (`Tour_ID`) ON DELETE CASCADE)
 INSERT INTO Tour_Registration (Tour_ID, Membership_ID, Registration_Date, Created_By, Created_At) VALUES
 (17, 2, '2026-04-01', 'system', CURDATE()),
 (17, 3, '2026-04-02', 'system', CURDATE()),

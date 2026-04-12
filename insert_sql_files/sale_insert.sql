@@ -2,6 +2,7 @@
 
 
 --gift shop items insert
+--@block
 INSERT INTO Gift_Shop_Item (Name_of_Item, Price_of_Item, Category, Stock_Quantity, Created_By, Created_At, Updated_By, Updated_AT) VALUES
 ('Museum Tote Bag', 24.99, 'Merchandise', 150, 'system', CURDATE(), 'system', CURDATE()),
 ('Van Gogh Umbrella', 32.50, 'Apparel', 75, 'system', CURDATE(), 'system', CURDATE()),
@@ -12,7 +13,8 @@ INSERT INTO Gift_Shop_Item (Name_of_Item, Price_of_Item, Category, Stock_Quantit
 ('Exhibition Catalog: SP 2026', 29.99, 'Books', 85, 'system', CURDATE(), 'system', CURDATE()),
 ('Museum Logo Scarf', 39.99, 'Apparel', 60, 'system', CURDATE(), 'system', CURDATE());
 
---food change
+
+--@block
 INSERT INTO Food (Food_Name, Food_Price, Created_By, Created_At, Updated_By, Updated_AT) VALUES
 ('Espresso', 3.50, 'system', CURDATE(), 'system', CURDATE()),
 ('Cappuccino', 4.75, 'system', CURDATE(), 'system', CURDATE()),
@@ -23,7 +25,9 @@ INSERT INTO Food (Food_Name, Food_Price, Created_By, Created_At, Updated_By, Upd
 ('Bottled Water', 2.00, 'system', CURDATE(), 'system', CURDATE()),
 ('Chocolate Croissant', 4.00, 'system', CURDATE(), 'system', CURDATE());
 
---gift shop sale
+
+--@block
+-- error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`gift_shop_sale`, CONSTRAINT `fk_Gift_Shop_Sale_EMPLOYEE` FOREIGN KEY (`Employee_ID`) REFERENCES `employee` (`Employee_ID`) ON DELETE RESTRICT)
 INSERT INTO Gift_Shop_Sale (Sale_Date, Employee_ID, Created_By, Created_At, Updated_By, Updated_At) VALUES
 ('2026-04-15', 92, 'system', CURDATE(), 'system', NULL),
 ('2026-04-16', 92, 'system', CURDATE(), 'system', NULL),
@@ -33,7 +37,8 @@ INSERT INTO Gift_Shop_Sale (Sale_Date, Employee_ID, Created_By, Created_At, Upda
 ('2026-04-20', 100, 'system', CURDATE(), 'system', NULL);
 
 
---gift shop sale line insert
+--@block
+-- error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`gift_shop_sale_line`, CONSTRAINT `fk_Gift_Shop_Sale_Line_Sale` FOREIGN KEY (`Gift_Shop_Sale_ID`) REFERENCES `gift_shop_sale` (`Gift_Shop_Sale_ID`) ON DELETE CASCADE)
 INSERT INTO Gift_Shop_Sale_Line (Price_When_Item_is_Sold, Quantity, Total_Sum_For_Gift_Shop_Sale, Gift_Shop_Sale_ID, Gift_Shop_Item_ID, Created_By, Created_At, Updated_By, Updated_At) VALUES
 (24.99, 2, 49.98, 1, 9, 'system', CURDATE(), 'system', NULL),
 (12.95, 3, 38.85, 1, 12, 'system', CURDATE(), 'system', NULL),
@@ -48,7 +53,8 @@ INSERT INTO Gift_Shop_Sale_Line (Price_When_Item_is_Sold, Quantity, Total_Sum_Fo
 (8.99, 3, 26.97, 6, 13, 'system', CURDATE(), 'system', NULL),
 (19.99, 1, 19.99, 6, 15, 'system', CURDATE(), 'system', NULL);
 
---food_sale insert
+--@block
+-- error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`food_sale`, CONSTRAINT `fk_Food_sale_Employee` FOREIGN KEY (`Employee_ID`) REFERENCES `employee` (`Employee_ID`))
 INSERT INTO Food_Sale (Sale_Date, Employee_ID, Created_By, Created_At, Updated_By, Updated_At) VALUES
 ('2026-04-15', 4, 'system', CURDATE(), 'system', CURDATE()),
 ('2026-04-16', 72, 'system', CURDATE(), 'system', CURDATE()),
@@ -59,7 +65,7 @@ INSERT INTO Food_Sale (Sale_Date, Employee_ID, Created_By, Created_At, Updated_B
 ('2026-04-21', 4, 'system', CURDATE(), 'system', CURDATE()),
 ('2026-04-22', 72, 'system', CURDATE(), 'system', CURDATE());
 
---food_sale_line insert
+--@block
 INSERT INTO Food_Sale_Line (Price_When_Food_Was_Sold, Quantity, Food_Sale_ID, Food_ID, Created_By, Created_At, Updated_By, Updated_At) VALUES
 (3.50, 2, 1, 1, 'system', CURDATE(), 'system', CURDATE()),
 (4.75, 1, 1, 2, 'system', CURDATE(), 'system', CURDATE()),

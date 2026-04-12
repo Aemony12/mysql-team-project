@@ -1,6 +1,5 @@
 --made a different file for institutions that are loaned to us
-
---institution(partner museums insert)
+--@block
 INSERT INTO Institution (Institution_Name, Contact_Name, Contact_Email, Contact_Phone, City, Country, Created_By, Created_At, Updated_By, Updated_At) VALUES
 ('Louvre Museum', 'Jean Dupont', 'jean.dupont@louvre.fr', '+33140205050', 'Paris', 'France', 'system', CURDATE(), 'system', CURDATE()),
 ('Metropolitan Museum of Art', 'Sarah Johnson', 'sjohnson@metmuseum.org', '+12125705500', 'New York', 'USA', 'system', CURDATE(), 'system', CURDATE()),
@@ -9,7 +8,8 @@ INSERT INTO Institution (Institution_Name, Contact_Name, Contact_Email, Contact_
 ('Uffizi Gallery', 'Lorenzo Bianchi', 'l.bianchi@uffizi.it', '+39055238600', 'Florence', 'Italy', 'system', CURDATE(), 'system', CURDATE()),
 ('Prado Museum', 'Maria Garcia', 'm.garcia@museodelprado.es', '+34913302800', 'Madrid', 'Spain', 'system', CURDATE(), 'system', CURDATE());
 
---artwork loan insert
+--@block
+-- error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`artwork_loan`, CONSTRAINT `fk_loan_approver` FOREIGN KEY (`Approved_By`) REFERENCES `employee` (`Employee_ID`) ON DELETE SET NULL)
 INSERT INTO Artwork_Loan (Artwork_ID, Institution_ID, Loan_Type, Start_Date, End_Date, Insurance_Value, Status, Approved_By, Notes, Created_By, Created_At, Updated_By, Updated_At) VALUES
 (4, 1, 'Outgoing', '2026-01-15', '2026-04-15', 50000.00, 'Returned', 72, 'Loan to Louvre for special exhibition', 'system', CURDATE(), 'system', CURDATE()),
 (5, 2, 'Outgoing', '2026-02-01', '2026-05-01', 75000.00, 'Active', 73, 'On loan to Met for drawing show', 'system', CURDATE(), 'system', CURDATE()),

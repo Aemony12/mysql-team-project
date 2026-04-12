@@ -18,11 +18,7 @@ INSERT INTO artist (Artist_Name, Date_of_Birth, Date_of_Death, Birth_Place) VALU
 ('Nicolas Lancret',               '1690-01-22', '1743-09-14', 'Paris'),
 ('Claude Monet',                  '1840-01-01', '1926-01-01', 'Paris');
 
---artwork insert
 --@block
--- Insert artworks only for the specified artists (12 records)
--- Titles shortened to fit VARCHAR(30)
-
 INSERT INTO Artwork (Title, Type, Date_Created, Time_Period, Art_Style, Artist_ID, Created_By, Created_At)
 SELECT 
     tmp.Title,
@@ -60,7 +56,8 @@ FROM (
 ) tmp
 JOIN Artist a ON a.Artist_Name = tmp.Artist_Name;
 
---artwork_condition_report
+--@block
+-- error Cannot add or update a child row: a foreign key constraint fails (`museumdb`.`artwork_condition_report`, CONSTRAINT `fk_condition_inspector` FOREIGN KEY (`Inspector_ID`) REFERENCES `employee` (`Employee_ID`) ON DELETE SET NULL)
 INSERT INTO Artwork_Condition_Report (Artwork_ID, Condition_Status, Report_Date, Inspector_ID, Restoration_Required, Notes, Created_By, Created_At, Updated_By, Updated_At) VALUES
 (4, 'Excellent', '2026-01-10', 72, FALSE, 'No issues; stable', 'system', CURDATE(), 'system', CURDATE()),
 (5, 'Good', '2026-01-15', 84, FALSE, 'Minor surface dust', 'system', CURDATE(), 'system', CURDATE()),
@@ -74,6 +71,3 @@ INSERT INTO Artwork_Condition_Report (Artwork_ID, Condition_Status, Report_Date,
 (13, 'Poor', '2026-04-08', 87, TRUE, 'Paint flaking; requires conservation', 'system', CURDATE(), 'system', CURDATE()),
 (14, 'Excellent', '2026-04-10', 96, FALSE, 'Like new', 'system', CURDATE(), 'system', CURDATE()),
 (15, 'Good', '2026-04-12', 100, FALSE, 'Minor wear', 'system', CURDATE(), 'system', CURDATE());
-
-
-
