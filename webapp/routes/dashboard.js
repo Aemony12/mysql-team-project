@@ -99,6 +99,12 @@ function registerDashboardRoutes(app, { pool }) {
               <a class="button button-secondary" href="/add-sale-line">Add Items to Sale</a>
             </div>
           </section>
+          <section class="dashboard-section">
+            <h2>Inventory</h2>
+            <div class="button-row dashboard-actions">
+              <a class="button" href="/add-item">Gift Shop Inventory</a>
+            </div>
+          </section>
           <form method="post" action="/logout" class="dashboard-footer">
             <button class="button" type="submit">Log Out</button>
           </form>
@@ -124,9 +130,14 @@ function registerDashboardRoutes(app, { pool }) {
           <section class="dashboard-section">
             <h2>Orders</h2>
             <div class="button-row dashboard-actions">
-              <a class="button" href="/add-food">Café Menu</a>
               <a class="button" href="/add-food-sale">New Café Sale</a>
               <a class="button button-secondary" href="/add-food-sale-line">Add Items to Order</a>
+            </div>
+          </section>
+          <section class="dashboard-section">
+            <h2>Inventory</h2>
+            <div class="button-row dashboard-actions">
+              <a class="button" href="/add-food">Café Inventory</a>
             </div>
           </section>
           <form method="post" action="/logout" class="dashboard-footer">

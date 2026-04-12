@@ -13,10 +13,11 @@ const {
 
 function registerGiftShopRoutes(app, { pool }) {
 
-  app.get("/add-item", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.get("/add-item", requireLogin, allowRoles(["giftshop", "supervisor"]), asyncHandler(async (req, res) => {
     const [items] = await pool.query(
       "SELECT Gift_Shop_Item_ID, Name_of_Item, Price_of_Item, Stock_Quantity FROM Gift_Shop_Item",
     );
+    const isSuper = req.session.user.role === "supervisor";
 
    let editItem = null;
   if (req.query.edit_id) {
@@ -27,25 +28,38 @@ function registerGiftShopRoutes(app, { pool }) {
     editItem = rows[0] || null;
   }
 
-    const itemRows = items.map((item) => `
-      <tr>
+    const itemRows = items.map((item) => {
+      const rowStyle = item.Stock_Quantity === 0
+        ? 'style="background:#fdecea;"'
+        : item.Stock_Quantity <= 5
+          ? 'style="background:#fff8e1;"'
+          : '';
+      const statusHtml = item.Stock_Quantity === 0
+        ? '<span style="color:#c0392b;font-weight:bold;">Out of Stock</span>'
+        : item.Stock_Quantity <= 5
+          ? '<span style="color:#e67e22;font-weight:bold;">Low Stock</span>'
+          : '<span style="color:#27ae60;">Available</span>';
+      return `
+      <tr ${rowStyle}>
         <td>${item.Gift_Shop_Item_ID}</td>
         <td>${escapeHtml(item.Name_of_Item)}</td>
         <td>$${Number(item.Price_of_Item).toFixed(2)}</td>
         <td>${item.Stock_Quantity}</td>
-        <td>${item.Stock_Quantity > 5 ? "Available" : item.Stock_Quantity > 0 ? "Low Stock" : "Out of Stock"}</td>
+        <td>${statusHtml}</td>
         <td class="actions">
             <form method="get" action="/add-item" class="inline-form">
             <input type="hidden" name="edit_id" value="${item.Gift_Shop_Item_ID}">
             <button class="link-button" type="submit">Edit</button>
           </form>
+          ${isSuper ? `
           <form method="post" action="/delete-item" class="inline-form" onsubmit="return confirm('Remove this item?');">
             <input type="hidden" name="item_id" value="${item.Gift_Shop_Item_ID}">
             <button class="link-button danger" type="submit">Delete</button>
-          </form>
+          </form>` : ""}
         </td>
       </tr>
-    `).join("");
+    `;
+    }).join("");
 
     res.send(renderPage({
       title: "Gift Shop Inventory",
@@ -95,7 +109,7 @@ function registerGiftShopRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/add-item", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/add-item", requireLogin, allowRoles(["giftshop", "supervisor"]), asyncHandler(async (req, res) => {
     const itemId = req.body.item_id || null;
     const { name, price, stock } = req.body;
 
@@ -142,6 +156,24 @@ function registerGiftShopRoutes(app, { pool }) {
     const [sales] = await pool.query("SELECT Gift_Shop_Sale_ID, Sale_Date, Employee_ID FROM Gift_Shop_Sale");
     let editSale = null;
 
+    // Daily sales summary
+    const [[todayTotals]] = await pool.query(`
+      SELECT COUNT(DISTINCT gs.Gift_Shop_Sale_ID) AS total_sales,
+             COALESCE(SUM(gsl.Quantity * gsl.Price_When_Item_is_Sold), 0) AS total_revenue
+      FROM Gift_Shop_Sale gs
+      JOIN Gift_Shop_Sale_Line gsl ON gs.Gift_Shop_Sale_ID = gsl.Gift_Shop_Sale_ID
+      WHERE gs.Sale_Date = CURDATE()
+    `);
+    const [bestSeller] = await pool.query(`
+      SELECT i.Name_of_Item, SUM(gsl.Quantity) AS total_qty
+      FROM Gift_Shop_Sale_Line gsl
+      JOIN Gift_Shop_Sale gs ON gsl.Gift_Shop_Sale_ID = gs.Gift_Shop_Sale_ID
+      JOIN Gift_Shop_Item i ON gsl.Gift_Shop_Item_ID = i.Gift_Shop_Item_ID
+      WHERE gs.Sale_Date = CURDATE()
+      GROUP BY gsl.Gift_Shop_Item_ID, i.Name_of_Item
+      ORDER BY total_qty DESC LIMIT 1
+    `);
+
       if (req.query.edit_id) {
         const [rows] = await pool.query(
           "SELECT * FROM Gift_Shop_Sale WHERE Gift_Shop_Sale_ID = ?",
@@ -155,9 +187,9 @@ function registerGiftShopRoutes(app, { pool }) {
         <td>${formatDisplayDate(sale.Sale_Date)}</td>
         <td>${escapeHtml(sale.Employee_ID)}</td>
         <td class="actions">
-        <form method="get" action="/add-sale" class="inline-form">
-          <input type="hidden" name="edit_id" value="${sale.Gift_Shop_Sale_ID}">
-          <button class="link-button" type="submit">Edit</button>
+        <form method="post" action="/load-gift-sale" class="inline-form">
+            <input type="hidden" name="sale_id" value="${sale.Gift_Shop_Sale_ID}">
+            <button class="link-button" type="submit">Edit</button>
           </form>
           <form method="post" action="/delete-sale" class="inline-form" onsubmit="return confirm('Delete this sale?');">
             <input type="hidden" name="sale_id" value="${sale.Gift_Shop_Sale_ID}">
@@ -171,6 +203,23 @@ function registerGiftShopRoutes(app, { pool }) {
       title: "Add Gift Shop Sale",
       user: req.session.user,
       content: `
+      <section class="card narrow">
+        <h2>Today's Sales Summary</h2>
+        <div style="display:flex; gap:2rem; margin-bottom:1rem;">
+          <div style="background:#f0f7ff; padding:1rem 1.5rem; border-radius:8px; text-align:center;">
+            <div style="font-size:2rem; font-weight:bold;">${todayTotals.total_sales}</div>
+            <div style="color:#555; font-size:0.9rem;">Sales Today</div>
+          </div>
+          <div style="background:#f0fff4; padding:1rem 1.5rem; border-radius:8px; text-align:center;">
+            <div style="font-size:2rem; font-weight:bold;">$${Number(todayTotals.total_revenue).toFixed(2)}</div>
+            <div style="color:#555; font-size:0.9rem;">Revenue Today</div>
+          </div>
+        </div>
+        ${bestSeller.length
+          ? `<p style="color:#555;">🏆 Best seller today: <strong>${escapeHtml(bestSeller[0].Name_of_Item)}</strong> (${bestSeller[0].total_qty} sold)</p>`
+          : `<p style="color:#888;">No sales recorded today yet.</p>`}
+      </section>
+
       <section class="card narrow">
         <h1>${editSale ? "Edit Gift Shop Sale" : "Add Gift Shop Sale"}</h1>
         ${renderFlash(req)}
@@ -218,7 +267,7 @@ function registerGiftShopRoutes(app, { pool }) {
     );
 
     setFlash(req, "Sale updated.");
-    return res.redirect("/add-sale");
+    return res.redirect("/add-sale-line");
   } else {
     let employeeId = req.session.user.employeeId;
     if (!employeeId) {
@@ -232,11 +281,12 @@ function registerGiftShopRoutes(app, { pool }) {
       setFlash(req, "Employee record not found. Please contact a supervisor.");
       return res.redirect("/add-sale");
     }
-    await pool.query(
+    const [result] = await pool.query(
       "INSERT INTO Gift_Shop_Sale (Sale_Date, Employee_ID) VALUES (?, ?)",
       [saleDate, employeeId],
     );
-    setFlash(req, "Sale created. Now add items to it.");
+    req.session.currentGiftSaleId = result.insertId;
+    setFlash(req, "Sale started. Now add items to it.");
     res.redirect("/add-sale-line");
   }
   }));
@@ -250,14 +300,23 @@ function registerGiftShopRoutes(app, { pool }) {
     res.redirect("/add-sale");
   }));
 
+  app.post("/load-gift-sale", requireLogin, allowRoles(["giftshop", "supervisor", "employee"]), asyncHandler(async (req, res) => {
+    req.session.currentGiftSaleId = parseInt(req.body.sale_id);
+    res.redirect("/add-sale-line");
+  }));
+
   app.get("/add-sale-line", requireLogin, allowRoles(["giftshop", "supervisor", "employee"]), asyncHandler(async (req, res) => {
-    const [sales] = await pool.query("SELECT Gift_Shop_Sale_ID FROM Gift_Shop_Sale");
+    const currentSaleId = req.session.currentGiftSaleId || null;
     const [items] = await pool.query("SELECT Gift_Shop_Item_ID, Name_of_Item, Price_of_Item FROM Gift_Shop_Item");
-    const [lines] = await pool.query(`
+    const [saleInfo] = currentSaleId ? await pool.query(
+      "SELECT Sale_Date FROM Gift_Shop_Sale WHERE Gift_Shop_Sale_ID = ?", [currentSaleId]
+    ) : [[]];
+    const [lines] = currentSaleId ? await pool.query(`
       SELECT gsl.Gift_Shop_Sale_ID, gsl.Gift_Shop_Item_ID, i.Name_of_Item, gsl.Quantity, gsl.Price_When_Item_is_Sold, gsl.Total_Sum_For_Gift_Shop_Sale
       FROM Gift_Shop_Sale_Line gsl
       JOIN Gift_Shop_Item i ON gsl.Gift_Shop_Item_ID = i.Gift_Shop_Item_ID
-    `);
+      WHERE gsl.Gift_Shop_Sale_ID = ?
+    `, [currentSaleId]) : [[]];
 
       let editLine = null;
 
@@ -297,15 +356,22 @@ function registerGiftShopRoutes(app, { pool }) {
       <section class="card narrow">
          <h1>${editLine ? "Edit Item in Sale" : "Add Item to Sale"}</h1>
         ${renderFlash(req)}
-        <form method="post" action="/add-sale-line" class="form-grid">
-        ${editLine ? `
-            <input type="hidden" name="original_item" value="${editLine.Gift_Shop_Item_ID}">
-          ` : ""}
-          <label>Sale
-            <select name="sale_id">
-              ${sales.map((sale) => `<option value="${sale.Gift_Shop_Sale_ID}">Sale #${sale.Gift_Shop_Sale_ID}</option>`).join("")}
-            </select>
-          </label>
+        ${!currentSaleId ? `
+          <p style="color:#c0392b;">No active sale. Please <a href="/add-sale">start a new sale</a> first.</p>
+        ` : `
+          <p style="color:#555; margin-bottom:1rem;">Current Sale: <strong>Sale #${currentSaleId}</strong> &nbsp;
+            <a href="/add-sale" style="font-size:0.85rem;">Start new sale</a>
+          </p>
+          <form method="post" action="/add-sale" class="form-grid" style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #eee;">
+            <input type="hidden" name="sale_id" value="${currentSaleId}">
+            <label>Sale Date
+              <input type="date" name="sale_date" value="${saleInfo[0] ? formatDateInput(saleInfo[0].Sale_Date) : ''}" required>
+            </label>
+            <button class="button" type="submit" style="background:#666;">Update Date</button>
+          </form>
+          <form method="post" action="/add-sale-line" class="form-grid">
+          ${editLine ? `<input type="hidden" name="original_item" value="${editLine.Gift_Shop_Item_ID}">` : ""}
+          <input type="hidden" name="sale_id" value="${currentSaleId}">
           <label>Item
             <select name="item_id">
               ${items.map((item) => `<option value="${item.Gift_Shop_Item_ID}">${escapeHtml(item.Name_of_Item)} ($${item.Price_of_Item})</option>`).join("")}
@@ -314,10 +380,11 @@ function registerGiftShopRoutes(app, { pool }) {
           <label>Quantity
             <input type="number" name="quantity" value="${editLine ? editLine.Quantity : ""}" required>
           </label>
-           <button class="button" type="submit">
+          <button class="button" type="submit">
             ${editLine ? "Update Item" : "Add Item"}
           </button>
-        </form>
+          </form>
+        `}
       </section>
       <section class="card narrow">
         <h2>Items in Sales</h2>
@@ -340,7 +407,8 @@ function registerGiftShopRoutes(app, { pool }) {
   }));
 
   app.post("/add-sale-line", requireLogin, allowRoles(["giftshop", "supervisor", "employee"]), asyncHandler(async (req, res) => {
-    const { sale_id: saleId, item_id: itemId, quantity, original_item } = req.body;
+    const { item_id: itemId, quantity, original_item } = req.body;
+    const saleId = req.session.currentGiftSaleId;
 
     if (!saleId || !itemId || !quantity) {
       setFlash(req, "All fields are required.");

@@ -296,4 +296,66 @@ BEGIN
     END IF;
 END$$
 
+-- Trigger: reduce food stock when a sale line is added
+-- Fires AFTER insert so the sale line is already saved.
+-- Subtracts NEW.Quantity from the food item's Stock_Quantity automatically.
+DROP TRIGGER IF EXISTS trigger_reduce_food_stock$$
+CREATE TRIGGER trigger_reduce_food_stock
+AFTER INSERT ON Food_Sale_Line
+FOR EACH ROW
+BEGIN
+    UPDATE Food SET Stock_Quantity = Stock_Quantity - NEW.Quantity
+    WHERE Food_ID = NEW.Food_ID;
+END$$
+
+-- Trigger: keep food stock accurate when a sale line is edited
+-- Adds OLD.Quantity back (undoes original), then subtracts NEW.Quantity (applies update).
+DROP TRIGGER IF EXISTS trigger_update_food_stock$$
+CREATE TRIGGER trigger_update_food_stock
+AFTER UPDATE ON Food_Sale_Line
+FOR EACH ROW
+BEGIN
+    UPDATE Food SET Stock_Quantity = Stock_Quantity + OLD.Quantity WHERE Food_ID = OLD.Food_ID;
+    UPDATE Food SET Stock_Quantity = Stock_Quantity - NEW.Quantity WHERE Food_ID = NEW.Food_ID;
+END$$
+
+-- Trigger: restore food stock when a sale line is deleted
+-- OLD.Quantity holds the deleted row's quantity; adds it back to inventory.
+DROP TRIGGER IF EXISTS trigger_restore_food_stock$$
+CREATE TRIGGER trigger_restore_food_stock
+AFTER DELETE ON Food_Sale_Line
+FOR EACH ROW
+BEGIN
+    UPDATE Food SET Stock_Quantity = Stock_Quantity + OLD.Quantity WHERE Food_ID = OLD.Food_ID;
+END$$
+
+-- Trigger: alert manager when food stock runs low
+-- Only fires when crossing the threshold downward, not on every update.
+DROP TRIGGER IF EXISTS trigger_low_food_stock_alert$$
+CREATE TRIGGER trigger_low_food_stock_alert
+AFTER UPDATE ON Food
+FOR EACH ROW
+BEGIN
+    IF NEW.Stock_Quantity <= 5 AND OLD.Stock_Quantity > 5 THEN
+        INSERT INTO manager_notifications (source_table, source_id, message)
+        VALUES ('Food', NEW.Food_ID,
+            CONCAT('Low stock alert: "', NEW.Food_Name, '" has only ', NEW.Stock_Quantity, ' portions remaining.'));
+    END IF;
+END$$
+
+-- Trigger: block cafe sale if there is not enough food stock
+-- SELECT ... INTO loads current stock; SIGNAL blocks the insert if insufficient.
+DROP TRIGGER IF EXISTS trigger_check_food_stock$$
+CREATE TRIGGER trigger_check_food_stock
+BEFORE INSERT ON Food_Sale_Line
+FOR EACH ROW
+BEGIN
+    DECLARE available INT;
+    SELECT Stock_Quantity INTO available FROM Food WHERE Food_ID = NEW.Food_ID;
+    IF available < NEW.Quantity THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient food stock for this item';
+    END IF;
+END$$
+
 DELIMITER ;

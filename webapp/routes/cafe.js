@@ -7,47 +7,64 @@ const {
   renderPage,
   requireLogin,
   setFlash,
-  allowRoles
+  allowRoles,
+  logTriggerViolation
 } = require("../helpers");
 
 function registerCafeRoutes(app, { pool }) {
 
   app.get("/add-food", requireLogin, allowRoles(["cafe", "supervisor"]), asyncHandler(async (req, res) => {
-    const [foods] = await pool.query("SELECT Food_ID, Food_Name, Food_Price FROM Food");
+    const [foods] = await pool.query("SELECT Food_ID, Food_Name, Food_Price, Stock_Quantity FROM Food");
+    const isSuper = req.session.user.role === "supervisor";
 
     let editFood = null;
     if (req.query.edit_id) {
-    const [rows] = await pool.query(
-      "SELECT * FROM Food WHERE Food_ID = ?",
-      [req.query.edit_id],
-    );
-    editFood = rows[0] || null;
+      const [rows] = await pool.query(
+        "SELECT * FROM Food WHERE Food_ID = ?",
+        [req.query.edit_id],
+      );
+      editFood = rows[0] || null;
     }
 
-    const foodRows = foods.map((food) => `
-      <tr>
+    const foodRows = foods.map((food) => {
+      const rowStyle = food.Stock_Quantity === 0
+        ? 'style="background:#fdecea;"'
+        : food.Stock_Quantity <= 5
+          ? 'style="background:#fff8e1;"'
+          : '';
+      const statusHtml = food.Stock_Quantity === 0
+        ? '<span style="color:#c0392b;font-weight:bold;">Out of Stock</span>'
+        : food.Stock_Quantity <= 5
+          ? '<span style="color:#e67e22;font-weight:bold;">Low Stock</span>'
+          : '<span style="color:#27ae60;">Available</span>';
+      return `
+      <tr ${rowStyle}>
         <td>${food.Food_ID}</td>
         <td>${escapeHtml(food.Food_Name)}</td>
         <td>$${Number(food.Food_Price).toFixed(2)}</td>
+        <td>${food.Stock_Quantity}</td>
+        <td>${statusHtml}</td>
         <td class="actions">
-        <form method="get" action="/add-food" class="inline-form">
-          <input type="hidden" name="edit_id" value="${food.Food_ID}">
-          <button class="link-button" type="submit">Edit</button>
-        </form>
+          <form method="get" action="/add-food" class="inline-form">
+            <input type="hidden" name="edit_id" value="${food.Food_ID}">
+            <button class="link-button" type="submit">Edit</button>
+          </form>
+          ${isSuper ? `
           <form method="post" action="/delete-food" class="inline-form" onsubmit="return confirm('Delete this food item?');">
             <input type="hidden" name="food_id" value="${food.Food_ID}">
             <button class="link-button danger" type="submit">Delete</button>
-          </form>
+          </form>` : ""}
         </td>
       </tr>
-    `).join("");
+    `;
+    }).join("");
 
     res.send(renderPage({
       title: "Manage Food",
       user: req.session.user,
       content: `
       <section class="card narrow">
-        <h1>${editFood ? "Edit Food" : "Add Food Item"}</h1>
+        <h1>${editFood ? "Edit Food Item" : "Add Food Item"}</h1>
         ${renderFlash(req)}
         <form method="post" action="/add-food" class="form-grid">
         ${editFood ? `<input type="hidden" name="food_id" value="${editFood.Food_ID}">` : ""}
@@ -59,24 +76,30 @@ function registerCafeRoutes(app, { pool }) {
             <input type="number" step="0.01" name="food_price"
             value="${editFood ? editFood.Food_Price : ""}" required>
           </label>
-         <button class="button" type="submit">
+          <label>Stock
+            <input type="number" name="stock"
+            value="${editFood ? editFood.Stock_Quantity : ""}" required>
+          </label>
+          <button class="button" type="submit">
             ${editFood ? "Update Food" : "Add Food"}
           </button>
         </form>
       </section>
       <section class="card narrow">
-        <h2>Food Menu</h2>
+        <h2>Food Inventory</h2>
         <table>
           <thead>
             <tr>
               <th>ID</th>
               <th>Name</th>
               <th>Price</th>
+              <th>Stock</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            ${foodRows || '<tr><td colspan="4">No food items found.</td></tr>'}
+            ${foodRows || '<tr><td colspan="6">No food items found.</td></tr>'}
           </tbody>
         </table>
       </section>
@@ -86,25 +109,25 @@ function registerCafeRoutes(app, { pool }) {
 
   app.post("/add-food", requireLogin, allowRoles(["cafe", "supervisor"]), asyncHandler(async (req, res) => {
     const foodId = req.body.food_id || null;
-    const { food_name: foodName, food_price: foodPrice } = req.body;
+    const { food_name: foodName, food_price: foodPrice, stock } = req.body;
 
-    if (!foodName || !foodPrice) {
+    if (!foodName || !foodPrice || stock === undefined || stock === "") {
       setFlash(req, "All fields are required.");
       return res.redirect("/add-food");
     }
     if (foodId) {
       await pool.query(
-      "UPDATE Food SET Food_Name = ?, Food_Price = ? WHERE Food_ID = ?",
-      [foodName, foodPrice, foodId],
-    );
-    setFlash(req, "Food updated.");
-  } else {
-    await pool.query(
-      "INSERT INTO Food (Food_Name, Food_Price) VALUES (?, ?)",
-      [foodName, foodPrice],
-    );
-    setFlash(req, "Food added.");
-  }
+        "UPDATE Food SET Food_Name = ?, Food_Price = ?, Stock_Quantity = ? WHERE Food_ID = ?",
+        [foodName, foodPrice, stock, foodId],
+      );
+      setFlash(req, "Food updated.");
+    } else {
+      await pool.query(
+        "INSERT INTO Food (Food_Name, Food_Price, Stock_Quantity) VALUES (?, ?, ?)",
+        [foodName, foodPrice, stock],
+      );
+      setFlash(req, "Food added.");
+    }
     res.redirect("/add-food");
   }));
 
@@ -121,6 +144,24 @@ function registerCafeRoutes(app, { pool }) {
 
     let editSale = null;
 
+    // Daily sales summary
+    const [[todayTotals]] = await pool.query(`
+      SELECT COUNT(DISTINCT fs.Food_Sale_ID) AS total_sales,
+             COALESCE(SUM(fsl.Quantity * fsl.Price_When_Food_Was_Sold), 0) AS total_revenue
+      FROM Food_Sale fs
+      JOIN Food_Sale_Line fsl ON fs.Food_Sale_ID = fsl.Food_Sale_ID
+      WHERE fs.Sale_Date = CURDATE()
+    `);
+    const [bestSeller] = await pool.query(`
+      SELECT f.Food_Name, SUM(fsl.Quantity) AS total_qty
+      FROM Food_Sale_Line fsl
+      JOIN Food_Sale fs ON fsl.Food_Sale_ID = fs.Food_Sale_ID
+      JOIN Food f ON fsl.Food_ID = f.Food_ID
+      WHERE fs.Sale_Date = CURDATE()
+      GROUP BY fsl.Food_ID, f.Food_Name
+      ORDER BY total_qty DESC LIMIT 1
+    `);
+
     if (req.query.edit_id) {
       const [rows] = await pool.query(
         "SELECT * FROM Food_Sale WHERE Food_Sale_ID = ?",
@@ -135,10 +176,10 @@ function registerCafeRoutes(app, { pool }) {
         <td>${formatDisplayDate(sale.Sale_Date)}</td>
         <td>${escapeHtml(sale.Employee_ID)}</td>
         <td class="actions">
-          <form method="get" action="/add-food-sale" class="inline-form">
-          <input type="hidden" name="edit_id" value="${sale.Food_Sale_ID}">
-          <button class="link-button" type="submit">Edit</button>
-        </form>
+          <form method="post" action="/load-food-sale" class="inline-form">
+            <input type="hidden" name="sale_id" value="${sale.Food_Sale_ID}">
+            <button class="link-button" type="submit">Edit</button>
+          </form>
           <form method="post" action="/delete-food-sale" class="inline-form" onsubmit="return confirm('Delete this sale?');">
             <input type="hidden" name="sale_id" value="${sale.Food_Sale_ID}">
             <button class="link-button danger" type="submit">Delete</button>
@@ -151,6 +192,23 @@ function registerCafeRoutes(app, { pool }) {
       title: "Add Food Sale",
       user: req.session.user,
       content: `
+      <section class="card narrow">
+        <h2>Today's Sales Summary</h2>
+        <div style="display:flex; gap:2rem; margin-bottom:1rem;">
+          <div style="background:#f0f7ff; padding:1rem 1.5rem; border-radius:8px; text-align:center;">
+            <div style="font-size:2rem; font-weight:bold;">${todayTotals.total_sales}</div>
+            <div style="color:#555; font-size:0.9rem;">Sales Today</div>
+          </div>
+          <div style="background:#f0fff4; padding:1rem 1.5rem; border-radius:8px; text-align:center;">
+            <div style="font-size:2rem; font-weight:bold;">$${Number(todayTotals.total_revenue).toFixed(2)}</div>
+            <div style="color:#555; font-size:0.9rem;">Revenue Today</div>
+          </div>
+        </div>
+        ${bestSeller.length
+          ? `<p style="color:#555;">🏆 Best seller today: <strong>${escapeHtml(bestSeller[0].Food_Name)}</strong> (${bestSeller[0].total_qty} sold)</p>`
+          : `<p style="color:#888;">No sales recorded today yet.</p>`}
+      </section>
+
       <section class="card narrow">
         <h1>${editSale ? "Edit Food Sale" : "Add Food Sale"}</h1>
         ${renderFlash(req)}
@@ -199,7 +257,7 @@ function registerCafeRoutes(app, { pool }) {
     );
 
     setFlash(req, "Food sale updated.");
-    return res.redirect("/add-food-sale");
+    return res.redirect("/add-food-sale-line");
   } else {
       let employeeId = req.session.user.employeeId;
       if (!employeeId) {
@@ -213,11 +271,12 @@ function registerCafeRoutes(app, { pool }) {
         setFlash(req, "Employee record not found. Please contact a supervisor.");
         return res.redirect("/add-food-sale");
       }
-      await pool.query(
+      const [result] = await pool.query(
         "INSERT INTO Food_Sale (Sale_Date, Employee_ID) VALUES (?, ?)",
         [saleDate, employeeId],
       );
-      setFlash(req, "Food sale created. Now add items.");
+      req.session.currentFoodSaleId = result.insertId;
+      setFlash(req, "Order started. Now add items.");
   }
     res.redirect("/add-food-sale-line");
   }));
@@ -231,14 +290,23 @@ function registerCafeRoutes(app, { pool }) {
     res.redirect("/add-food-sale");
   }));
 
+  app.post("/load-food-sale", requireLogin, allowRoles(["cafe", "supervisor", "employee"]), asyncHandler(async (req, res) => {
+    req.session.currentFoodSaleId = parseInt(req.body.sale_id);
+    res.redirect("/add-food-sale-line");
+  }));
+
   app.get("/add-food-sale-line", requireLogin, allowRoles(["cafe", "supervisor", "employee"]), asyncHandler(async (req, res) => {
-    const [sales] = await pool.query("SELECT Food_Sale_ID FROM Food_Sale");
+    const currentSaleId = req.session.currentFoodSaleId || null;
     const [foods] = await pool.query("SELECT Food_ID, Food_Name, Food_Price FROM Food");
-    const [lines] = await pool.query(`
+    const [saleInfo] = currentSaleId ? await pool.query(
+      "SELECT Sale_Date FROM Food_Sale WHERE Food_Sale_ID = ?", [currentSaleId]
+    ) : [[]];
+    const [lines] = currentSaleId ? await pool.query(`
       SELECT fsl.Food_Sale_ID, fsl.Food_ID, f.Food_Name, fsl.Quantity, fsl.Price_When_Food_Was_Sold
       FROM Food_Sale_Line fsl
       JOIN Food f ON fsl.Food_ID = f.Food_ID
-    `);
+      WHERE fsl.Food_Sale_ID = ?
+    `, [currentSaleId]) : [[]];
 
     let editLine = null;
 
@@ -272,21 +340,28 @@ function registerCafeRoutes(app, { pool }) {
     `).join("");
 
     res.send(renderPage({
-      title: "Add Food Sale Line",
+      title: "Add Items to Order",
       user: req.session.user,
       content: `
       <section class="card narrow">
-        <h1>${editLine ? "Edit Food Sale Line" : "Add Food to Sale"}</h1>
+        <h1>${editLine ? "Edit Item in Order" : "Add Items to Order"}</h1>
         ${renderFlash(req)}
-        <form method="post" action="/add-food-sale-line" class="form-grid">
-          ${editLine ? `
-          <input type="hidden" name="original_food" value="${editLine.Food_ID}">
-        ` : ""}
-          <label>Sale
-            <select name="sale_id">
-              ${sales.map((sale) => `<option value="${sale.Food_Sale_ID}">Sale #${sale.Food_Sale_ID}</option>`).join("")}
-            </select>
-          </label>
+        ${!currentSaleId ? `
+          <p style="color:#c0392b;">No active order. Please <a href="/add-food-sale">start a new order</a> first.</p>
+        ` : `
+          <p style="color:#555; margin-bottom:1rem;">Current Order: <strong>Order #${currentSaleId}</strong> &nbsp;
+            <a href="/add-food-sale" style="font-size:0.85rem;">Start new order</a>
+          </p>
+          <form method="post" action="/add-food-sale" class="form-grid" style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #eee;">
+            <input type="hidden" name="sale_id" value="${currentSaleId}">
+            <label>Sale Date
+              <input type="date" name="sale_date" value="${saleInfo[0] ? formatDateInput(saleInfo[0].Sale_Date) : ''}" required>
+            </label>
+            <button class="button" type="submit" style="background:#666;">Update Date</button>
+          </form>
+          <form method="post" action="/add-food-sale-line" class="form-grid">
+          ${editLine ? `<input type="hidden" name="original_food" value="${editLine.Food_ID}">` : ""}
+          <input type="hidden" name="sale_id" value="${currentSaleId}">
           <label>Food
             <select name="food_id">
               ${foods.map((food) => `<option value="${food.Food_ID}">${escapeHtml(food.Food_Name)} ($${food.Food_Price})</option>`).join("")}
@@ -297,10 +372,11 @@ function registerCafeRoutes(app, { pool }) {
           <button class="button" type="submit">
               ${editLine ? "Update Food" : "Add Food"}
             </button>
-        </form>
+          </form>
+        `}
       </section>
       <section class="card narrow">
-        <h2>Items in Sales</h2>
+        <h2>Items in Current Order</h2>
         <table>
           <thead>
             <tr>
@@ -319,8 +395,8 @@ function registerCafeRoutes(app, { pool }) {
   }));
 
   app.post("/add-food-sale-line", requireLogin, allowRoles(["cafe", "supervisor", "employee"]), asyncHandler(async (req, res) => {
-    
-    const { sale_id: saleId, food_id: foodId, quantity, original_food } = req.body;
+    const { food_id: foodId, quantity, original_food } = req.body;
+    const saleId = req.session.currentFoodSaleId;
 
     if (!saleId || !foodId || !quantity) {
       setFlash(req, "All fields are required.");
@@ -337,12 +413,21 @@ function registerCafeRoutes(app, { pool }) {
     );
       setFlash(req, "Food sale line updated.");
   } else {
-    await pool.query(
-      `INSERT INTO Food_Sale_Line (Food_Sale_ID, Food_ID, Quantity, Price_When_Food_Was_Sold)
-       VALUES (?, ?, ?, ?)`,
-      [saleId, foodId, quantity, food.Food_Price],
-    );
-    setFlash(req, "Food added to sale.");
+    try {
+      await pool.query(
+        `INSERT INTO Food_Sale_Line (Food_Sale_ID, Food_ID, Quantity, Price_When_Food_Was_Sold)
+         VALUES (?, ?, ?, ?)`,
+        [saleId, foodId, quantity, food.Food_Price],
+      );
+      setFlash(req, "Food added to sale.");
+    } catch (err) {
+      if (err.sqlState === "45000") {
+        await logTriggerViolation(pool, req, err.sqlMessage);
+        setFlash(req, err.sqlMessage);
+      } else {
+        throw err;
+      }
+    }
   }
     res.redirect("/add-food-sale-line");
   }));
