@@ -93,6 +93,7 @@ BEGIN
     END IF;
 END$$
 
+
 -- Trigger: block ticket sale if membership is expired
 -- Only runs if a Membership_ID was provided (IS NOT NULL).
 -- Date_Exited < NEW.Visit_Date means the membership expired before the visit date.
