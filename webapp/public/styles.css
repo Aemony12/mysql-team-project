@@ -531,6 +531,52 @@ textarea:focus {
   background: var(--surface);
 }
 
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.tab-button {
+  min-height: 2.45rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--copy);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+}
+
+.tab-button:hover {
+  background: var(--surface-strong);
+  border-color: var(--header);
+  color: var(--ink);
+}
+
+.tab-button.is-active {
+  background: var(--header);
+  border-color: var(--header);
+  color: #fff;
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+.tab-panel {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 420ms ease,
+    transform 420ms ease;
+}
+
+.tab-panel.is-visible,
+.reduce-motion .tab-panel {
+  opacity: 1;
+  transform: none;
+}
+
 .notification-message {
   color: var(--copy);
   line-height: 1.5;

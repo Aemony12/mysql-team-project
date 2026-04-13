@@ -32,7 +32,7 @@ const ART_PERIODS = [
 ];
 
 function registerArtworkRoutes (app, { pool }) {
-    app.get("/add-artwork", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+    app.get("/add-artwork", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const artworkPage = getPageNumber(req.query.artwork_page);
     const [artists] = await pool.query("SELECT Artist_ID, Artist_Name FROM Artist");
     
@@ -161,7 +161,7 @@ function registerArtworkRoutes (app, { pool }) {
     }));
   }));
 
-  app.post("/add-artwork", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/add-artwork", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const id = req.body.artwork_id || null;
     const title = req.body.title?.trim();
     const type = req.body.type?.trim();
@@ -192,7 +192,7 @@ function registerArtworkRoutes (app, { pool }) {
     res.redirect("/add-artwork");
   }));
 
-  app.post("/delete-artwork", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/delete-artwork", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const idToDelete = req.body.artwork_id;
 
     if (!idToDelete) {

@@ -18,7 +18,7 @@ function registerLoansRoutes(app, { pool }) {
   // Shows a list of all institutions and a form to add a new one.
   // Access: supervisor only
   
-  app.get("/institutions", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.get("/institutions", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const [institutions] = await pool.query(
       "SELECT * FROM Institution ORDER BY Institution_Name"
     );
@@ -118,7 +118,7 @@ function registerLoansRoutes(app, { pool }) {
   }));
 
 
-  app.post("/institutions", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/institutions", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const {
       institution_id: institutionId,
       institution_name: institutionName,
@@ -160,7 +160,7 @@ function registerLoansRoutes(app, { pool }) {
 
 
   
-  app.post("/delete-institution", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/delete-institution", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const id = req.body.institution_id;
     if (!id) {
       setFlash(req, "No institution ID provided.");
@@ -184,7 +184,7 @@ function registerLoansRoutes(app, { pool }) {
 
 
  
-  app.get("/artwork-loans", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.get("/artwork-loans", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const filterStatus = req.query.status || "Active";
 
     const [artworks] = await pool.query(`
@@ -349,7 +349,7 @@ function registerLoansRoutes(app, { pool }) {
 
 
 
-  app.post("/artwork-loans", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/artwork-loans", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const {
       artwork_id: artworkId,
       institution_id: institutionId,
@@ -395,7 +395,7 @@ function registerLoansRoutes(app, { pool }) {
 
 
 
-  app.post("/artwork-loans/return", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/artwork-loans/return", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const { loan_id: loanId } = req.body;
     if (!loanId) {
       setFlash(req, "No loan ID provided.");
@@ -411,7 +411,7 @@ function registerLoansRoutes(app, { pool }) {
 
 
 
-  app.post("/artwork-loans/cancel", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/artwork-loans/cancel", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const { loan_id: loanId } = req.body;
     if (!loanId) {
       setFlash(req, "No loan ID provided.");

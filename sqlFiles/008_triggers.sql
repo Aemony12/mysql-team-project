@@ -227,6 +227,15 @@ BEGIN
             CONCAT('Low stock alert: "', NEW.Name_of_Item, '" has only ', NEW.Stock_Quantity, ' units remaining.')
         );
     END IF;
+
+    IF NEW.Stock_Quantity = 0 AND OLD.Stock_Quantity > 0 THEN
+        INSERT INTO manager_notifications (source_table, source_id, message)
+        VALUES (
+            'Gift_Shop_Item',
+            NEW.Gift_Shop_Item_ID,
+            CONCAT('Out of stock alert: "', NEW.Name_of_Item, '" is now out of stock.')
+        );
+    END IF;
 END$$
 
 -- Trigger: block gift shop sale if there is not enough stock
@@ -375,6 +384,12 @@ BEGIN
         INSERT INTO manager_notifications (source_table, source_id, message)
         VALUES ('Food', NEW.Food_ID,
             CONCAT('Low stock alert: "', NEW.Food_Name, '" has only ', NEW.Stock_Quantity, ' portions remaining.'));
+    END IF;
+
+    IF NEW.Stock_Quantity = 0 AND OLD.Stock_Quantity > 0 THEN
+        INSERT INTO manager_notifications (source_table, source_id, message)
+        VALUES ('Food', NEW.Food_ID,
+            CONCAT('Out of stock alert: "', NEW.Food_Name, '" is now out of stock.'));
     END IF;
 END$$
 

@@ -9,12 +9,13 @@ const {
   isAdmissions,
   isCafe,
   isGiftShop,
+  isCurator,
 } = require("../helpers");
 
 function registerDashboardRoutes(app, { pool }) {
   app.get("/dashboard", requireLogin, asyncHandler(async (req, res) => {
     const user = req.session.user;
-    if (!isEmployee(user) && !isSupervisor(user)) {
+    if (!isEmployee(user) && !isSupervisor(user) && !isCurator(user)) {
       return res.send(renderPage({
         title: "Member Dashboard",
         user,
@@ -139,6 +140,40 @@ function registerDashboardRoutes(app, { pool }) {
             <h2>Inventory</h2>
             <div class="button-row dashboard-actions">
               <a class="button" href="/add-food">Café Inventory</a>
+            </div>
+          </section>
+          <form method="post" action="/logout" class="dashboard-footer">
+            <button class="button" type="submit">Log Out</button>
+          </form>
+        </section>
+      `,
+      }));
+    }
+
+    if (isCurator(user)) {
+      return res.send(renderPage({
+        title: "Curatorial Portal",
+        user,
+        content: `
+        <section class="card narrow dashboard-card">
+          <p class="eyebrow">Curatorial</p>
+          <h1>Welcome, ${escapeHtml(user.name.split(" ")[0])}</h1>
+          <p class="dashboard-intro">Manage artists, artworks, exhibitions, and collection care records.</p>
+          <dl class="details dashboard-details">
+            <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
+            <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
+          </dl>
+          ${renderFlash(req)}
+          <section class="dashboard-section">
+            <h2>Collection Records</h2>
+            <div class="button-row dashboard-actions">
+              <a class="button" href="/add-artist">Artists</a>
+              <a class="button" href="/add-artwork">Artwork</a>
+              <a class="button" href="/add-exhibition">Exhibitions</a>
+              <a class="button button-secondary" href="/add-exhibition-artwork">Exhibition Artwork</a>
+              <a class="button button-secondary" href="/condition-reports">Condition Reports</a>
+              <a class="button button-secondary" href="/artwork-loans">Artwork Loans</a>
+              <a class="button button-secondary" href="/queries">Search the Collection</a>
             </div>
           </section>
           <form method="post" action="/logout" class="dashboard-footer">

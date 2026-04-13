@@ -348,6 +348,20 @@ function registerReportsRoutes(app, { pool }) {
         <p class="dashboard-note">These report views satisfy the rubric requirement for filtered reports with selectable criteria.</p>
       </section>
       <section class="card narrow">
+        <div class="tab-bar" data-tab-group="reports">
+          <button class="tab-button" type="button" data-tab-target="consolidated-report-tab">Financial Summary</button>
+          <button class="tab-button" type="button" data-tab-target="ticket-sales-report-tab">Ticket Sales</button>
+          <button class="tab-button" type="button" data-tab-target="employee-report-tab">Employees</button>
+          <button class="tab-button" type="button" data-tab-target="revenue-report-tab">Exhibition Revenue</button>
+          <button class="tab-button" type="button" data-tab-target="gift-report-tab">Gift Shop</button>
+          <button class="tab-button" type="button" data-tab-target="cafe-report-tab">Café</button>
+          <button class="tab-button" type="button" data-tab-target="membership-report-tab">Membership</button>
+          <button class="tab-button" type="button" data-tab-target="event-attendance-report-tab">Events</button>
+          <button class="tab-button" type="button" data-tab-target="tour-attendance-report-tab">Tours</button>
+          <button class="tab-button" type="button" data-tab-target="schedule-report-tab">Schedule</button>
+        </div>
+      </section>
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="consolidated-report-tab">
         <div id="consolidated-report"></div>
         <h2>Consolidated Financial Summary</h2>
         <p class="dashboard-note">Aggregated daily revenue from all departments (Tickets, Gift Shop, Café).</p>
@@ -374,7 +388,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "consolidated_page", consolidatedPagination, "consolidated-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="ticket-sales-report-tab">
         <div id="ticket-sales-report"></div>
         <h2>Ticket Sales by Date Range</h2>
         <form method="get" action="/reports" class="form-grid">
@@ -399,7 +413,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "ticket_sales_page", ticketSalesPagination, "ticket-sales-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="employee-report-tab">
         <div id="employee-report"></div>
         <h2>Employees by Department</h2>
         <form method="get" action="/reports" class="form-grid">
@@ -421,7 +435,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "employee_page", employeePagination, "employee-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="revenue-report-tab">
         <div id="revenue-report"></div>
         <h2>Revenue by Exhibition</h2>
         <form method="get" action="/reports" class="form-grid">
@@ -445,7 +459,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "revenue_page", revenuePagination, "revenue-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="gift-report-tab">
         <div id="gift-report"></div>
         <h2>Gift Shop Sales Summary</h2>
         <form method="get" action="/reports" class="form-grid">
@@ -470,7 +484,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "gift_page", giftPagination, "gift-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="cafe-report-tab">
         <div id="cafe-report"></div>
         <h2>Cafe Sales Summary</h2>
         <form method="get" action="/reports" class="form-grid">
@@ -495,7 +509,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "cafe_page", cafePagination, "cafe-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="membership-report-tab">
         <div id="membership-report"></div>
         <h2>Membership Status Report</h2>
         <form method="get" action="/reports" class="form-grid">
@@ -523,7 +537,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "membership_page", membershipPagination, "membership-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="event-attendance-report-tab">
         <div id="event-attendance-report"></div>
         <h2>Event Attendance</h2>
         <form method="get" action="/reports" class="form-grid">
@@ -549,7 +563,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "event_attendance_page", eventAttendancePagination, "event-attendance-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="tour-attendance-report-tab">
         <div id="tour-attendance-report"></div>
         <h2>Tour Attendance</h2>
         <form method="get" action="/reports" class="form-grid">
@@ -575,7 +589,7 @@ function registerReportsRoutes(app, { pool }) {
         </table>
         ${renderPager(req, "tour_attendance_page", tourAttendancePagination, "tour-attendance-report")}
       </section>
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="reports" data-tab-panel="schedule-report-tab">
         <div id="schedule-report"></div>
         <h2>Employee Schedule Report</h2>
         <form method="get" action="/reports" class="form-grid">

@@ -488,6 +488,7 @@ function registerGiftShopRoutes(app, { pool }) {
           <td>${item.Stock_Quantity > 0
             ? `<form method="post" action="/gift-order/add-item" class="inline-form">
                 <input type="hidden" name="item_id" value="${item.Gift_Shop_Item_ID}">
+                <input type="number" name="quantity" value="1" min="1" max="${item.Stock_Quantity}" style="width:5.5rem;margin-right:0.5rem;">
                 <button class="button" type="submit" style="padding:0.3rem 0.8rem;">Add</button>
                </form>`
             : '<span style="color:#aaa;">Unavailable</span>'
@@ -607,6 +608,7 @@ function registerGiftShopRoutes(app, { pool }) {
 
   app.post("/gift-order/add-item", requireLogin, allowRoles(["giftshop", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const { item_id } = req.body;
+    const quantity = Number.parseInt(req.body.quantity, 10) || 1;
     const [[item]] = await pool.query(
       "SELECT Gift_Shop_Item_ID, Name_of_Item, Price_of_Item, Stock_Quantity FROM Gift_Shop_Item WHERE Gift_Shop_Item_ID = ?",
       [item_id]
@@ -617,16 +619,24 @@ function registerGiftShopRoutes(app, { pool }) {
       return res.redirect("/gift-order");
     }
 
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setFlash(req, "Quantity must be at least 1.");
+      return res.redirect("/gift-order");
+    }
+
     if (!req.session.giftCart) req.session.giftCart = [];
     const existing = req.session.giftCart.find(i => i.id == item_id);
+    const requestedQty = existing ? existing.qty + quantity : quantity;
+
+    if (requestedQty > item.Stock_Quantity) {
+      setFlash(req, `Only ${item.Stock_Quantity} units available for "${item.Name_of_Item}".`);
+      return res.redirect("/gift-order");
+    }
+
     if (existing) {
-      if (existing.qty >= item.Stock_Quantity) {
-        setFlash(req, `Only ${item.Stock_Quantity} units available for "${escapeHtml(item.Name_of_Item)}".`);
-        return res.redirect("/gift-order");
-      }
-      existing.qty++;
+      existing.qty += quantity;
     } else {
-      req.session.giftCart.push({ id: item_id, name: item.Name_of_Item, price: parseFloat(item.Price_of_Item), qty: 1 });
+      req.session.giftCart.push({ id: item_id, name: item.Name_of_Item, price: parseFloat(item.Price_of_Item), qty: quantity });
     }
     res.redirect("/gift-order");
   }));

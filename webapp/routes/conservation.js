@@ -12,7 +12,7 @@ const {
 
 function registerConservationRoutes(app, { pool }) {
 
-  app.get("/condition-reports", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.get("/condition-reports", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
 
     const [artworks] = await pool.query(`
       SELECT AW.Artwork_ID, AW.Title, AR.Artist_Name
@@ -163,7 +163,7 @@ function registerConservationRoutes(app, { pool }) {
 
 
  
-  app.post("/condition-reports", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/condition-reports", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const {
       artwork_id: artworkId,
       condition_status: conditionStatus,
@@ -199,7 +199,7 @@ function registerConservationRoutes(app, { pool }) {
 
 
   
-  app.get("/condition-reports/history", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.get("/condition-reports/history", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const artworkId = req.query.artwork_id;
 
     if (!artworkId) {

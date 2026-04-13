@@ -15,7 +15,7 @@ const {
 } = require("../helpers");
 
 function registerExhibitionRoutes(app, { pool }) {
-  app.get("/add-exhibition", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.get("/add-exhibition", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const exhibitionPage = getPageNumber(req.query.exhibition_page);
     const [exhibitions] = await pool.query(
       "SELECT Exhibition_ID, Exhibition_Name, Starting_Date, Ending_Date FROM Exhibition",
@@ -94,7 +94,7 @@ function registerExhibitionRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/add-exhibition", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/add-exhibition", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const id = req.body.exhibition_id || null;
     const { name, start_date: startDate, end_date: endDate } = req.body;
 
@@ -132,7 +132,7 @@ function registerExhibitionRoutes(app, { pool }) {
     }
     res.redirect("/add-exhibition");
   }));
-  app.post("/delete-exhibition", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/delete-exhibition", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const idToDelete = req.body.exhibition_id;
 
     if (!idToDelete) {
@@ -148,7 +148,7 @@ function registerExhibitionRoutes(app, { pool }) {
     res.redirect("/add-exhibition");
   }));
 
-  app.get("/add-exhibition-artwork", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.get("/add-exhibition-artwork", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const linkPage = getPageNumber(req.query.link_page);
     const [exhibitions] = await pool.query("SELECT Exhibition_ID, Exhibition_Name FROM Exhibition");
     const [artworks] = await pool.query("SELECT Artwork_ID, Title FROM Artwork");
@@ -254,7 +254,7 @@ function registerExhibitionRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/add-exhibition-artwork", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/add-exhibition-artwork", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const {
       exhibition_id: exhibitionId,
       artwork_id: artworkId,
@@ -298,7 +298,7 @@ function registerExhibitionRoutes(app, { pool }) {
     res.redirect("/add-exhibition-artwork");
   }));
 
-  app.post("/delete-exhibition-artwork", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/delete-exhibition-artwork", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const { exhibition_id: exhibitionId, artwork_id: artworkId } = req.body;
 
     await pool.query(

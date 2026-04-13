@@ -36,7 +36,7 @@ function registerEmployeeRoutes(app, { pool }) {
       <tr>
         <td>${emp.Employee_ID}</td>
         <td>${escapeHtml(emp.First_Name)} ${escapeHtml(emp.Last_Name)}</td>
-        <td>${{admissions:"Admissions Desk",giftshop:"Gift Shop",cafe:"Café",supervisor:"Supervisor",employee:"General Staff",
+        <td>${{admissions:"Admissions Desk",giftshop:"Gift Shop",cafe:"Café",supervisor:"Supervisor",curator:"Curator",employee:"General Staff",
           janitor:"Janitorial",security:"Security",maintenance:"Maintenance"}[emp.Employee_Role] || escapeHtml(emp.Employee_Role || "N/A")}</td>
         <td class="actions">
           <form method="get" action="/add-employee" class="inline-form">
@@ -82,6 +82,7 @@ function registerEmployeeRoutes(app, { pool }) {
             <select name="role">
               <option value="employee" ${editEmployee && editEmployee.Employee_Role === "employee" ? "selected" : ""}>Employee</option>
               <option value="supervisor" ${editEmployee && editEmployee.Employee_Role === "supervisor" ? "selected" : ""}>Supervisor</option>
+              <option value="curator" ${editEmployee && editEmployee.Employee_Role === "curator" ? "selected" : ""}>Curator</option>
               <option value="admissions" ${editEmployee && editEmployee.Employee_Role === "admissions" ? "selected" : ""}>Admissions Desk</option>
               <option value="giftshop" ${editEmployee && editEmployee.Employee_Role === "giftshop"   ? "selected" : ""}>Gift Shop</option>
               <option value="cafe" ${editEmployee && editEmployee.Employee_Role === "cafe"   ? "selected" : ""}>Café</option>

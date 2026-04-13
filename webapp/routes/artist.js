@@ -15,7 +15,7 @@ const {
 } = require("../helpers");
 
 function registerArtistRoutes(app, { pool }) {
-  app.get("/add-artist", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.get("/add-artist", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const artistPage = getPageNumber(req.query.artist_page);
     const [artists] = await pool.query(
       "SELECT Artist_ID, Artist_Name, Birth_Place, Date_of_Birth, Date_of_Death FROM Artist",
@@ -113,7 +113,7 @@ function registerArtistRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/add-artist", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/add-artist", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const id = req.body.artist_id || null;
     const name = req.body.name?.trim();
     const dob = req.body.dob || null;
@@ -163,7 +163,7 @@ function registerArtistRoutes(app, { pool }) {
     res.redirect("/add-artist");
   }));
 
-  app.post("/delete-artist", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/delete-artist", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const idToDelete = req.body.artist_id;
 
     if (!idToDelete) {

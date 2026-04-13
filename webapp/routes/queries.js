@@ -10,7 +10,7 @@ function registerQueriesRoutes(app, { pool }) {
   app.get("/queries", requireLogin, asyncHandler(async (req, res) => {
     const user = req.session.user;
     const isSuper = user.role === "supervisor";
-    const isEmp = user.role === "employee" || user.role === "cafe" || user.role === "giftshop" || user.role === "admissions";
+    const isEmp = user.role === "employee" || user.role === "cafe" || user.role === "giftshop" || user.role === "admissions" || user.role === "curator";
 
     // -- Query: Artwork Status & Tracking
     // -- Tracks where art is currently located: exhibition, loan, or storage.
@@ -262,6 +262,17 @@ function registerQueriesRoutes(app, { pool }) {
       </section>
 
       <section class="card narrow">
+        <div class="tab-bar" data-tab-group="queries">
+          <button class="tab-button" type="button" data-tab-target="artwork-status">Artwork Status</button>
+          <button class="tab-button" type="button" data-tab-target="staff-exhibitions">Staffing</button>
+          <button class="tab-button" type="button" data-tab-target="artwork-search">Artwork Search</button>
+          <button class="tab-button" type="button" data-tab-target="exhibition-dates">Exhibitions</button>
+          <button class="tab-button" type="button" data-tab-target="gift-inventory">Gift Shop</button>
+          <button class="tab-button" type="button" data-tab-target="cafe-inventory">Café</button>
+        </div>
+      </section>
+
+      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="artwork-status">
         <h2>Artwork Status & Tracking</h2>
         <form method="get" action="/queries" class="form-grid">
           <label>Artwork Title
@@ -299,7 +310,7 @@ function registerQueriesRoutes(app, { pool }) {
         </table>
       </section>
 
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="staff-exhibitions">
         <h2>Exhibition Guides & Staffing</h2>
         <form method="get" action="/queries" class="form-grid">
           <label>Search Exhibition
@@ -328,7 +339,7 @@ function registerQueriesRoutes(app, { pool }) {
         </table>
       </section>
 
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="artwork-search">
         <h2>Finding Artwork</h2>
         <form method="get" action="/queries" class="form-grid">
           <label>Title
@@ -362,7 +373,7 @@ function registerQueriesRoutes(app, { pool }) {
         </table>
       </section>
 
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="exhibition-dates">
         <h2>Exhibitions by Date Range</h2>
         <form method="get" action="/queries" class="form-grid">
           <label>Start Date
@@ -385,7 +396,7 @@ function registerQueriesRoutes(app, { pool }) {
         </table>
       </section>
 
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="gift-inventory">
         <h2>Gift Shop Inventory</h2>
         <form method="get" action="/queries" class="form-grid">
           <label>Category
@@ -416,7 +427,7 @@ function registerQueriesRoutes(app, { pool }) {
         </table>
       </section>
 
-      <section class="card narrow">
+      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="cafe-inventory">
         <h2>Café Inventory</h2>
         <form method="get" action="/queries" class="form-grid">
           <label>Item Type

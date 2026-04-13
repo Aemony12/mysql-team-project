@@ -15,8 +15,40 @@ const CAFE_TYPES = ["Food", "Drink", "Dessert", "Snack", "Other"];
 
 function registerCafeRoutes(app, { pool }) {
 
+  async function hasFoodTypeColumn() {
+    const [rows] = await pool.query(
+      `SELECT 1
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'Food'
+         AND COLUMN_NAME = 'Type'
+       LIMIT 1`
+    );
+
+    return rows.length > 0;
+  }
+
+  async function hasFoodStockColumn() {
+    const [rows] = await pool.query(
+      `SELECT 1
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'Food'
+         AND COLUMN_NAME = 'Stock_Quantity'
+       LIMIT 1`
+    );
+
+    return rows.length > 0;
+  }
+
   app.get("/add-food", requireLogin, allowRoles(["cafe", "supervisor"]), asyncHandler(async (req, res) => {
-    const [foods] = await pool.query("SELECT Food_ID, Food_Name, Type, Food_Price, Stock_Quantity FROM Food");
+    const foodHasTypeColumn = await hasFoodTypeColumn();
+    const foodHasStockColumn = await hasFoodStockColumn();
+    const [foods] = await pool.query(
+      `SELECT Food_ID, Food_Name, ${foodHasTypeColumn ? "Type" : "NULL"} AS Type, Food_Price,
+              ${foodHasStockColumn ? "Stock_Quantity" : "NULL"} AS Stock_Quantity
+       FROM Food`
+    );
     const isSuper = req.session.user.role === "supervisor";
 
     let editFood = null;
@@ -29,12 +61,16 @@ function registerCafeRoutes(app, { pool }) {
     }
 
     const foodRows = foods.map((food) => {
-      const rowStyle = food.Stock_Quantity === 0
+      const rowStyle = !foodHasStockColumn
+        ? ''
+        : food.Stock_Quantity === 0
         ? 'style="background:#fdecea;"'
         : food.Stock_Quantity <= 5
           ? 'style="background:#fff8e1;"'
           : '';
-      const statusHtml = food.Stock_Quantity === 0
+      const statusHtml = !foodHasStockColumn
+        ? '<span style="color:#666;">Unavailable</span>'
+        : food.Stock_Quantity === 0
         ? '<span style="color:#c0392b;font-weight:bold;">Out of Stock</span>'
         : food.Stock_Quantity <= 5
           ? '<span style="color:#e67e22;font-weight:bold;">Low Stock</span>'
@@ -75,20 +111,20 @@ function registerCafeRoutes(app, { pool }) {
             <input type="text" name="food_name"
             value="${editFood ? escapeHtml(editFood.Food_Name) : ""}" required>
           </label>
-          <label>Type
+          ${foodHasTypeColumn ? `<label>Type
             <select name="type" required>
               <option value="">Select a type</option>
               ${CAFE_TYPES.map(t => `<option value="${t}" ${editFood && editFood.Type === t ? 'selected' : ''}>${t}</option>`).join("")}
             </select>
-          </label>
+          </label>` : ""}
           <label>Price ($)
             <input type="number" step="0.01" name="food_price"
             value="${editFood ? editFood.Food_Price : ""}" required>
           </label>
-          <label>Stock
+          ${foodHasStockColumn ? `<label>Stock
             <input type="number" name="stock"
             value="${editFood ? editFood.Stock_Quantity : ""}" required>
-          </label>
+          </label>` : ""}
           <button class="button" type="submit">
             ${editFood ? "Update Item" : "Add Item"}
           </button>
@@ -120,22 +156,58 @@ function registerCafeRoutes(app, { pool }) {
   app.post("/add-food", requireLogin, allowRoles(["cafe", "supervisor"]), asyncHandler(async (req, res) => {
     const foodId = req.body.food_id || null;
     const { food_name: foodName, food_price: foodPrice, stock, type } = req.body;
+    const foodHasTypeColumn = await hasFoodTypeColumn();
+    const foodHasStockColumn = await hasFoodStockColumn();
 
-    if (!foodName || !foodPrice || !type || stock === undefined || stock === "") {
+    if (!foodName || !foodPrice || (foodHasStockColumn && (stock === undefined || stock === "")) || (foodHasTypeColumn && !type)) {
       setFlash(req, "All fields are required.");
       return res.redirect("/add-food");
     }
     if (foodId) {
-      await pool.query(
-        "UPDATE Food SET Food_Name = ?, Food_Price = ?, Stock_Quantity = ?, Type = ? WHERE Food_ID = ?",
-        [foodName, foodPrice, stock, type, foodId],
-      );
+      if (foodHasTypeColumn && foodHasStockColumn) {
+        await pool.query(
+          "UPDATE Food SET Food_Name = ?, Food_Price = ?, Stock_Quantity = ?, Type = ? WHERE Food_ID = ?",
+          [foodName, foodPrice, stock, type, foodId],
+        );
+      } else if (foodHasStockColumn) {
+        await pool.query(
+          "UPDATE Food SET Food_Name = ?, Food_Price = ?, Stock_Quantity = ? WHERE Food_ID = ?",
+          [foodName, foodPrice, stock, foodId],
+        );
+      } else if (foodHasTypeColumn) {
+        await pool.query(
+          "UPDATE Food SET Food_Name = ?, Food_Price = ?, Type = ? WHERE Food_ID = ?",
+          [foodName, foodPrice, type, foodId],
+        );
+      } else {
+        await pool.query(
+          "UPDATE Food SET Food_Name = ?, Food_Price = ? WHERE Food_ID = ?",
+          [foodName, foodPrice, foodId],
+        );
+      }
       setFlash(req, "Item updated.");
     } else {
-      await pool.query(
-        "INSERT INTO Food (Food_Name, Food_Price, Stock_Quantity, Type) VALUES (?, ?, ?, ?)",
-        [foodName, foodPrice, stock, type],
-      );
+      if (foodHasTypeColumn && foodHasStockColumn) {
+        await pool.query(
+          "INSERT INTO Food (Food_Name, Food_Price, Stock_Quantity, Type) VALUES (?, ?, ?, ?)",
+          [foodName, foodPrice, stock, type],
+        );
+      } else if (foodHasStockColumn) {
+        await pool.query(
+          "INSERT INTO Food (Food_Name, Food_Price, Stock_Quantity) VALUES (?, ?, ?)",
+          [foodName, foodPrice, stock],
+        );
+      } else if (foodHasTypeColumn) {
+        await pool.query(
+          "INSERT INTO Food (Food_Name, Food_Price, Type) VALUES (?, ?, ?)",
+          [foodName, foodPrice, type],
+        );
+      } else {
+        await pool.query(
+          "INSERT INTO Food (Food_Name, Food_Price) VALUES (?, ?)",
+          [foodName, foodPrice],
+        );
+      }
       setFlash(req, "Item added.");
     }
     res.redirect("/add-food");
@@ -462,12 +534,20 @@ function registerCafeRoutes(app, { pool }) {
   }));
 
   app.get("/order", requireLogin, allowRoles(["cafe", "supervisor", "employee"]), asyncHandler(async (req, res) => {
-    const [foods] = await pool.query("SELECT Food_ID, Food_Name, Type, Food_Price, Stock_Quantity FROM Food");
+    const foodHasTypeColumn = await hasFoodTypeColumn();
+    const foodHasStockColumn = await hasFoodStockColumn();
+    const [foods] = await pool.query(
+      `SELECT Food_ID, Food_Name, ${foodHasTypeColumn ? "Type" : "NULL"} AS Type, Food_Price,
+              ${foodHasStockColumn ? "Stock_Quantity" : "NULL"} AS Stock_Quantity
+       FROM Food`
+    );
     const cart = req.session.cart || [];
     const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
 
     const menuRows = foods.map(food => {
-      const stockLabel = food.Stock_Quantity === 0
+      const stockLabel = !foodHasStockColumn
+        ? '<span style="color:#666;font-size:0.85rem;">Stock unavailable</span>'
+        : food.Stock_Quantity === 0
         ? '<span style="color:#c0392b;font-size:0.85rem;">Out of Stock</span>'
         : food.Stock_Quantity <= 5
           ? `<span style="color:#e67e22;font-size:0.85rem;">${food.Stock_Quantity} left</span>`
@@ -478,9 +558,10 @@ function registerCafeRoutes(app, { pool }) {
           <td>${escapeHtml(food.Type || "—")}</td>
           <td>$${Number(food.Food_Price).toFixed(2)}</td>
           <td>${stockLabel}</td>
-          <td>${food.Stock_Quantity > 0
+          <td>${!foodHasStockColumn || food.Stock_Quantity > 0
             ? `<form method="post" action="/order/add-item" class="inline-form">
                 <input type="hidden" name="food_id" value="${food.Food_ID}">
+                <input type="number" name="quantity" value="1" min="1" ${foodHasStockColumn ? `max="${food.Stock_Quantity}"` : ""} style="width:5.5rem;margin-right:0.5rem;">
                 <button class="button" type="submit" style="padding:0.3rem 0.8rem;">Add</button>
                </form>`
             : '<span style="color:#aaa;">Unavailable</span>'
@@ -601,26 +682,38 @@ function registerCafeRoutes(app, { pool }) {
 
   app.post("/order/add-item", requireLogin, allowRoles(["cafe", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const { food_id } = req.body;
+    const quantity = Number.parseInt(req.body.quantity, 10) || 1;
+    const foodHasStockColumn = await hasFoodStockColumn();
     const [[food]] = await pool.query(
-      "SELECT Food_ID, Food_Name, Food_Price, Stock_Quantity FROM Food WHERE Food_ID = ?",
+      `SELECT Food_ID, Food_Name, Food_Price,
+              ${foodHasStockColumn ? "Stock_Quantity" : "NULL"} AS Stock_Quantity
+       FROM Food WHERE Food_ID = ?`,
       [food_id]
     );
 
-    if (!food || food.Stock_Quantity <= 0) {
+    if (!food || (foodHasStockColumn && food.Stock_Quantity <= 0)) {
       setFlash(req, "Item is out of stock.");
+      return res.redirect("/order");
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setFlash(req, "Quantity must be at least 1.");
       return res.redirect("/order");
     }
 
     if (!req.session.cart) req.session.cart = [];
     const existing = req.session.cart.find(item => item.id == food_id);
+    const requestedQty = existing ? existing.qty + quantity : quantity;
+
+    if (foodHasStockColumn && requestedQty > food.Stock_Quantity) {
+      setFlash(req, `Only ${food.Stock_Quantity} portions available for "${food.Food_Name}".`);
+      return res.redirect("/order");
+    }
+
     if (existing) {
-      if (existing.qty >= food.Stock_Quantity) {
-        setFlash(req, `Only ${food.Stock_Quantity} portions available for "${escapeHtml(food.Food_Name)}".`);
-        return res.redirect("/order");
-      }
-      existing.qty++;
+      existing.qty += quantity;
     } else {
-      req.session.cart.push({ id: food_id, name: food.Food_Name, price: parseFloat(food.Food_Price), qty: 1 });
+      req.session.cart.push({ id: food_id, name: food.Food_Name, price: parseFloat(food.Food_Price), qty: quantity });
     }
     res.redirect("/order");
   }));
@@ -637,6 +730,7 @@ function registerCafeRoutes(app, { pool }) {
 
   app.post("/order/checkout", requireLogin, allowRoles(["cafe", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const cart = req.session.cart || [];
+    const foodHasStockColumn = await hasFoodStockColumn();
     if (cart.length === 0) {
       setFlash(req, "Cart is empty.");
       return res.redirect("/order");
@@ -653,8 +747,12 @@ function registerCafeRoutes(app, { pool }) {
     }
 
     for (const item of cart) {
-      const [[stock]] = await pool.query("SELECT Stock_Quantity, Food_Name FROM Food WHERE Food_ID = ?", [item.id]);
-      if (!stock || stock.Stock_Quantity < item.qty) {
+      const [[stock]] = await pool.query(
+        `SELECT Food_Name, ${foodHasStockColumn ? "Stock_Quantity" : "NULL"} AS Stock_Quantity
+         FROM Food WHERE Food_ID = ?`,
+        [item.id]
+      );
+      if (!stock || (foodHasStockColumn && stock.Stock_Quantity < item.qty)) {
         setFlash(req, `Not enough stock for "${stock?.Food_Name || 'item'}". Available: ${stock?.Stock_Quantity ?? 0}.`);
         return res.redirect("/order/checkout");
       }

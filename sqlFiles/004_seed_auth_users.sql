@@ -17,6 +17,7 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO users (name, email, password, role, is_active, employee_id)
 VALUES 
     ('Wei Chen', 'supervisor@example.com', 'supervisor123', 'supervisor', TRUE, 1),
+    ('James Thompson', 'curator@example.com', 'curator123', 'curator', TRUE, 3),
     ('Elena Rodriguez', 'employee@example.com', 'employee123', 'employee', TRUE, 2),
     ('David Brown', 'admissions@example.com', 'admissions123', 'admissions', TRUE, 16),
     ('Jessica Taylor', 'giftshop@example.com', 'giftshop123', 'giftshop', TRUE, 17),

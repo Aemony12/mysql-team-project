@@ -154,7 +154,7 @@ function renderPager(req, pageParam, pagination, anchorId, basePath = req.path) 
 }
 
 function isStaff(user) {
-  return isEmployee(user) || isSupervisor(user)
+  return isEmployee(user) || isSupervisor(user) || isCurator(user)
 }
 
 function isSupervisor(user) {
@@ -168,6 +168,10 @@ function isEmployee(user) {
 
 function isMember(user) {
   return user && user.role === "user";
+}
+
+function isCurator(user) {
+  return user && user.role === "curator";
 }
 
 function isAdmissions(user) {
@@ -221,5 +225,6 @@ module.exports = {
   isAdmissions,
   isGiftShop,
   isCafe,
+  isCurator,
   logTriggerViolation
 };
