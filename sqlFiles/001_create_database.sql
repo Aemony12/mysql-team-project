@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS Gift_Shop_Item (
 CREATE TABLE IF NOT EXISTS Food (
     Food_ID INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
     Food_Name VARCHAR(30),
+    Type VARCHAR(30),
     Food_Price DECIMAL(4, 2) NOT NULL,
     Created_By VARCHAR(30),
     Created_At DATE,

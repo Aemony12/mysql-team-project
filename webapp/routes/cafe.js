@@ -144,8 +144,16 @@ function registerCafeRoutes(app, { pool }) {
   app.post("/delete-food", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const idToDelete = req.body.food_id;
 
-    await pool.query("DELETE FROM Food WHERE Food_ID = ?", [idToDelete]);
-    setFlash(req, "Café item deleted.");
+    try {
+      await pool.query("DELETE FROM Food WHERE Food_ID = ?", [idToDelete]);
+      setFlash(req, "Café item deleted.");
+    } catch (err) {
+      if (err.code === "ER_ROW_IS_REFERENCED_2") {
+        setFlash(req, "Cannot delete: this item has existing sale records.");
+      } else {
+        throw err;
+      }
+    }
     res.redirect("/add-food");
   }));
 
@@ -215,7 +223,7 @@ function registerCafeRoutes(app, { pool }) {
           </div>
         </div>
         ${bestSeller.length
-          ? `<p style="color:#555;">🏆 Best seller today: <strong>${escapeHtml(bestSeller[0].Food_Name)}</strong> (${bestSeller[0].total_qty} sold)</p>`
+          ? `<p style="color:#555;"> Best seller today: <strong>${escapeHtml(bestSeller[0].Food_Name)}</strong> (${bestSeller[0].total_qty} sold)</p>`
           : `<p style="color:#888;">No sales recorded today yet.</p>`}
       </section>
 
@@ -503,7 +511,15 @@ function registerCafeRoutes(app, { pool }) {
         ${renderFlash(req)}
         <h2>Menu</h2>
         <table>
-          <thead><tr><th>Item</th><th>Type</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Type</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th></th>
+            </tr>
+          </thead>
           <tbody>${menuRows || '<tr><td colspan="5">No café items available.</td></tr>'}</tbody>
         </table>
       </section>
@@ -512,7 +528,15 @@ function registerCafeRoutes(app, { pool }) {
         ${cart.length === 0
           ? '<p style="color:#888;">No items in cart yet.</p>'
           : `<table>
-              <thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Price</th>
+                  <th>Qty</th>
+                  <th>Subtotal</th>
+                  <th></th>
+                </tr>
+              </thead>
               <tbody>${cartRows}</tbody>
               <tfoot><tr><td colspan="3" style="text-align:right;font-weight:bold;">Total</td><td><strong>$${cartTotal.toFixed(2)}</strong></td><td></td></tr></tfoot>
              </table>
@@ -554,7 +578,14 @@ function registerCafeRoutes(app, { pool }) {
         <h1>Order Summary</h1>
         ${renderFlash(req)}
         <table>
-          <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Subtotal</th>
+            </tr>
+          </thead>
           <tbody>${itemRows}</tbody>
           <tfoot><tr><td colspan="3" style="text-align:right;font-weight:bold;">Total</td><td><strong>$${total.toFixed(2)}</strong></td></tr></tfoot>
         </table>
@@ -629,31 +660,39 @@ function registerCafeRoutes(app, { pool }) {
       }
     }
 
-    const [result] = await pool.query(
-      "INSERT INTO Food_Sale (Sale_Date, Employee_ID) VALUES (CURDATE(), ?)",
-      [employeeId]
-    );
-    const saleId = result.insertId;
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
 
-    for (const item of cart) {
-      try {
-        await pool.query(
+      const [result] = await connection.query(
+        "INSERT INTO Food_Sale (Sale_Date, Employee_ID) VALUES (CURDATE(), ?)",
+        [employeeId]
+      );
+      const saleId = result.insertId;
+
+      for (const item of cart) {
+        await connection.query(
           `INSERT INTO Food_Sale_Line (Food_Sale_ID, Food_ID, Quantity, Price_When_Food_Was_Sold) VALUES (?, ?, ?, ?)`,
           [saleId, item.id, item.qty, item.price]
         );
-      } catch (err) {
-        if (err.sqlState === "45000") {
-          await logTriggerViolation(pool, req, err.sqlMessage);
-          setFlash(req, err.sqlMessage);
-          return res.redirect("/order/checkout");
-        }
-        throw err;
       }
-    }
 
-    const orderTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    req.session.cart = [];
-    setFlash(req, `Order #${saleId} completed! Total: $${orderTotal.toFixed(2)}`);
+      await connection.commit();
+
+      const orderTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+      req.session.cart = [];
+      setFlash(req, `Order #${saleId} completed! Total: $${orderTotal.toFixed(2)}`);
+    } catch (error) {
+      await connection.rollback();
+      if (error.sqlState === "45000") {
+        await logTriggerViolation(pool, req, error.sqlMessage);
+        setFlash(req, error.sqlMessage);
+        return res.redirect("/order/checkout");
+      }
+      throw error;
+    } finally {
+      connection.release();
+    }
     res.redirect("/order");
   }));
 }

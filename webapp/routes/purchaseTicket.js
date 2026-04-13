@@ -179,7 +179,7 @@ function registerPurchaseTicketRoutes(app, { pool }) {
     res.redirect("/purchase-ticket");
   }));
 
-  app.get("/sell-ticket", requireLogin, allowRoles(["admissions", "employee"]), asyncHandler(async (req, res) => {
+  app.get("/sell-ticket", requireLogin, allowRoles(["admissions", "employee", "supervisor"]), asyncHandler(async (req, res) => {
         const tickets = [
       { Ticket_Type_ID: 1, Name: "General Admission", Price: 20 },
       { Ticket_Type_ID: 2, Name: "Senior", Price: 15 },
@@ -215,9 +215,16 @@ function registerPurchaseTicketRoutes(app, { pool }) {
     <section class="card narrow">
     ${renderFlash(req)}
       <form method="post" action="/sell-ticket/add" class="form-grid">
-        <label>Membership ID (optional)
-          <input type="number" name="membership_id">
-      </label>
+        <label>Membership (optional)
+          <select name="membership_id">
+            <option value="">— None / Non-Member —</option>
+            ${members.map(m => `
+              <option value="${m.Membership_ID}" ${req.session.membershipId == m.Membership_ID ? 'selected' : ''}>
+                ID: ${m.Membership_ID} - ${escapeHtml(m.First_Name)} ${escapeHtml(m.Last_Name)}
+              </option>
+            `).join("")}
+          </select>
+        </label>
     <label>Visit Date
     <input type="date" name="visit_date" required>
   </label>
@@ -289,7 +296,7 @@ ${cart.length === 0 ? "<p>No tickets added yet</p>" : `
     }));
   }));
 
-app.get("/ticket-sales", requireLogin, allowRoles(["admissions", "employee"]), asyncHandler(async (req, res) => {
+app.get("/ticket-sales", requireLogin, allowRoles(["admissions", "employee", "supervisor"]), asyncHandler(async (req, res) => {
 
   const [[todayTotals]] = await pool.query(`
     SELECT COUNT(DISTINCT t.Ticket_ID) AS total_sales,
@@ -324,7 +331,7 @@ app.get("/ticket-sales", requireLogin, allowRoles(["admissions", "employee"]), a
 
 
 
-app.post("/sell-ticket/add", requireLogin, allowRoles(["admissions", "employee"]), asyncHandler(async (req, res) => {
+app.post("/sell-ticket/add", requireLogin, allowRoles(["admissions", "employee", "supervisor"]), asyncHandler(async (req, res) => {
     const { ticket_type_id, quantity, visit_date, membership_id, email, phone } = req.body;
 
       req.session.visitDate = visit_date;
@@ -351,7 +358,9 @@ app.post("/sell-ticket/add", requireLogin, allowRoles(["admissions", "employee"]
       req.session.ticketCart = [];
     }
 
-    const existing = req.session.ticketCart.find(t => t.id == ticket_type_id);
+    const exhibitionId = req.body.exhibition_id || null;
+
+    const existing = req.session.ticketCart.find(t => t.id == ticket_type_id && t.exhibitionId == exhibitionId);
     if (existing) {
       existing.qty += Number(quantity);
     } else {
@@ -359,7 +368,8 @@ app.post("/sell-ticket/add", requireLogin, allowRoles(["admissions", "employee"]
         id: ticket_type_id,
         name: ticket.Name,
         price: ticket.Price,
-        qty: Number(quantity)
+        qty: Number(quantity),
+        exhibitionId: exhibitionId
       });
     }
 
@@ -400,28 +410,42 @@ app.post("/sell-ticket/add", requireLogin, allowRoles(["admissions", "employee"]
       employeeId = rows[0]?.Employee_ID;
     }
 
-    const [result] = await pool.query(
-      "INSERT INTO Ticket (Purchase_type, Purchase_Date, Visit_Date, Membership_ID, Email, Phone_number, Payment_method) VALUES ('In-Person', CURRENT_DATE, ?, ?, ?, ?, 'Cash')",
-      [visit_date, membershipId, email, phone]
-    );
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
 
-    const saleId = result.insertId;
-
-    for (let item of cart) {
-      const finalPrice = item.price * (1 - discount);
-      await pool.query(
-        `INSERT INTO ticket_line 
-         (Ticket_ID, Ticket_Type, Quantity, Price_per_ticket)
-         VALUES (?, ?, ?, ?)`,
-        [saleId, item.name, item.qty, finalPrice]
+      const [result] = await connection.query(
+        "INSERT INTO Ticket (Purchase_type, Purchase_Date, Visit_Date, Membership_ID, Email, Phone_number, Payment_method) VALUES ('In-Person', CURRENT_DATE, ?, ?, ?, ?, 'Cash')",
+        [visit_date, membershipId, email, phone]
       );
+
+      const saleId = result.insertId;
+
+      for (let item of cart) {
+        const finalPrice = item.price * (1 - discount);
+        await connection.query(
+          `INSERT INTO ticket_line
+           (Ticket_ID, Ticket_Type, Quantity, Price_per_ticket, Exhibition_ID)
+           VALUES (?, ?, ?, ?, ?)`,
+          [saleId, item.name, item.qty, finalPrice, item.exhibitionId || null]
+        );
+      }
+
+      await connection.commit();
+      setFlash(req, "Ticket sale completed!");
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
 
     req.session.ticketCart = [];
     req.session.visitorEmail = null;
     req.session.visitorPhone = null;
+    req.session.membershipId = null;
+    req.session.visitDate = null;
 
-    setFlash(req, "Ticket sale completed!");
     res.redirect("/dashboard");
   }));
 }
