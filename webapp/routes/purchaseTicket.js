@@ -207,7 +207,7 @@ function registerPurchaseTicketRoutes(app, { pool }) {
     const [members] = await pool.query(
       "SELECT Membership_ID, First_Name, Last_Name FROM Membership ORDER BY Last_Name, First_Name"
     );
-
+    const today = new Date().toISOString().split("T")[0];
   res.send(renderPage({
     title: "Sell Tickets",
     user: req.session.user,
@@ -226,7 +226,7 @@ function registerPurchaseTicketRoutes(app, { pool }) {
           </select>
         </label>
     <label>Visit Date
-    <input type="date" name="visit_date" required>
+    <input type="date" name="visit_date" required min="${today}">
   </label>
   <label>Purchase Type
     <select name="purchase_type" required>

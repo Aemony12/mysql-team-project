@@ -49,6 +49,7 @@ function registerMembershipRoutes(app, { pool }) {
         </td>
       </tr>
     `).join("");
+    const today = new Date().toISOString().split("T")[0];
 
     res.send(renderPage({
       title: "Visitor Memberships",
@@ -74,7 +75,7 @@ function registerMembershipRoutes(app, { pool }) {
             <input type="tel" name="phone" value="${editMember ? escapeHtml(editMember.Phone_Number || "") : ""}">
           </label>
           <label>Date Joined
-            <input type="date" name="date_joined" value="${editMember ? formatDateInput(editMember.Date_Joined) : ""}">
+            <input type="date" name="date_joined" value="${editMember ? formatDateInput(editMember.Date_Joined) : ""}" max="${today}">
           </label>
           <button class="button" type="submit">${editMember ? "Update Membership" : "Add Membership"}</button>
           ${editMember ? `<a class="button button-secondary" href="/add-membership">Cancel Edit</a>` : ""}

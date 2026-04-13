@@ -49,7 +49,7 @@ function registerExhibitionRoutes(app, { pool }) {
         </td>
       </tr>
     `).join("");
-
+    const today = new Date().toISOString().split("T")[0];
     res.send(renderPage({
       title: "Manage Exhibitions",
       user: req.session.user,
@@ -63,10 +63,10 @@ function registerExhibitionRoutes(app, { pool }) {
             <input type="text" name="name" value="${editExhibition ? escapeHtml(editExhibition.Exhibition_Name) : ""}" required>
           </label>
           <label>Start Date
-            <input type="date" name="start_date" value="${editExhibition ? formatDateInput(editExhibition.Starting_Date) : ""}" required>
+            <input type="date" name="start_date" value="${editExhibition ? formatDateInput(editExhibition.Starting_Date) : ""}" min="${today}" required>
           </label>
           <label>End Date
-            <input type="date" name="end_date" value="${editExhibition ? formatDateInput(editExhibition.Ending_Date) : ""}" required>
+            <input type="date" name="end_date" value="${editExhibition ? formatDateInput(editExhibition.Ending_Date) : ""}"  min="${today}" required>
           </label>
           <button class="button" type="submit">${editExhibition ? "Update Exhibition" : "Add Exhibition"}</button>
         </form>
@@ -102,6 +102,17 @@ function registerExhibitionRoutes(app, { pool }) {
       setFlash(req, "All fields are required.");
       return res.redirect("/add-exhibition");
     }
+    const today = new Date().toISOString().split("T")[0];
+
+    if (startDate < today) {
+    setFlash(req, "Start date cannot be in the past.");
+    return res.redirect("/add-exhibition");
+  }
+
+    if (endDate < startDate) {
+    setFlash(req, "End date cannot be before start date.");
+    return res.redirect("/add-exhibition");
+  }
 
     if (id) {
       await pool.query(
@@ -119,10 +130,8 @@ function registerExhibitionRoutes(app, { pool }) {
       );
       setFlash(req, "Exhibition added successfully. Now link artwork to the exhibition.");
     }
-
     res.redirect("/add-exhibition");
   }));
-
   app.post("/delete-exhibition", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const idToDelete = req.body.exhibition_id;
 
