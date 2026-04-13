@@ -53,6 +53,7 @@ BEGIN
         SELECT 1 FROM Artist
         WHERE Artist_Name = NEW.Artist_Name
           AND Date_of_Birth = NEW.Date_of_Birth
+          AND (Date_of_Death = NEW.Date_of_Death OR (Date_of_Death IS NULL AND NEW.Date_of_Death IS NULL))
     ) THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Artist already exists in the database';

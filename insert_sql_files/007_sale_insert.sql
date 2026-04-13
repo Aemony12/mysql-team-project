@@ -15,15 +15,15 @@ INSERT INTO Gift_Shop_Item (Name_of_Item, Price_of_Item, Category, Stock_Quantit
 ('Museum Logo Scarf', 39.99, 'Apparel', 60, 'system', CURDATE(), 'system', CURDATE());
 
 -- food change
-INSERT INTO Food (Food_Name, Food_Price, Stock_Quantity, Created_By, Created_At, Updated_By, Updated_AT) VALUES
-('Espresso', 3.50, 100, 'system', CURDATE(), 'system', CURDATE()),
-('Cappuccino', 4.75, 100, 'system', CURDATE(), 'system', CURDATE()),
-('Blueberry Muffin', 3.25, 100, 'system', CURDATE(), 'system', CURDATE()),
-('Quiche Lorraine', 7.95, 100, 'system', CURDATE(), 'system', CURDATE()),
-('Greek Salad', 9.50, 100, 'system', CURDATE(), 'system', CURDATE()),
-('Kids Lunch Box', 6.50, 100, 'system', CURDATE(), 'system', CURDATE()),
-('Bottled Water', 2.00, 100, 'system', CURDATE(), 'system', CURDATE()),
-('Chocolate Croissant', 4.00, 100, 'system', CURDATE(), 'system', CURDATE());
+INSERT INTO Food (Food_Name, Type, Food_Price, Stock_Quantity, Created_By, Created_At, Updated_By, Updated_AT) VALUES
+('Espresso', "Drink", 3.50, 100, 'system', CURDATE(), 'system', CURDATE()),
+('Cappuccino', "Drink", 4.75, 100, 'system', CURDATE(), 'system', CURDATE()),
+('Blueberry Muffin', "Snack", 3.25, 100, 'system', CURDATE(), 'system', CURDATE()),
+('Quiche Lorraine', "Food", 7.95, 100, 'system', CURDATE(), 'system', CURDATE()),
+('Greek Salad', "Food", 9.50, 100, 'system', CURDATE(), 'system', CURDATE()),
+('Kids Lunch Box', "Food", 6.50, 100, 'system', CURDATE(), 'system', CURDATE()),
+('Bottled Water', "Drink", 2.00, 100, 'system', CURDATE(), 'system', CURDATE()),
+('Chocolate Croissant', "Dessert", 4.00, 100, 'system', CURDATE(), 'system', CURDATE());
 
 -- gift shop sale
 INSERT INTO Gift_Shop_Sale (Sale_Date, Employee_ID, Created_By, Created_At, Updated_By, Updated_At) VALUES
