@@ -61,6 +61,16 @@ function registerMembershipRoutes(app, { pool }) {
           <button class="link-button" type="submit">Edit</button>
         </form>`);
 
+      // Restore: only for cancelled memberships — gives a fresh 1-year period from today
+      if (m.Status === "Cancelled") {
+        actionButtons.push(`
+          <form method="post" action="/restore-membership" class="inline-form"
+                onsubmit="return confirm('Restore this membership? They will get a new 1-year period starting today.');">
+            <input type="hidden" name="membership_id" value="${m.Membership_ID}">
+            <button class="link-button" type="submit" style="color:#166534;">Restore</button>
+          </form>`);
+      }
+
       // Cancel: only if not already cancelled
       if (m.Status !== "Cancelled") {
         actionButtons.push(`
@@ -255,6 +265,50 @@ function registerMembershipRoutes(app, { pool }) {
     );
 
     setFlash(req, "Membership cancelled. Record kept for history.");
+    res.redirect("/add-membership");
+  }));
+
+
+  // ─── Restore cancelled membership ────────────────────────────────────────────
+  // Reactivates a Cancelled membership with a fresh 1-year period from today.
+  app.post("/restore-membership", requireLogin, allowRoles(["admissions", "supervisor", "employee"]), asyncHandler(async (req, res) => {
+    const id = req.body.membership_id;
+    if (!id) {
+      setFlash(req, "No membership ID provided.");
+      return res.redirect("/add-membership");
+    }
+
+    const [[member]] = await pool.query(
+      "SELECT Membership_ID, Status FROM Membership WHERE Membership_ID = ?",
+      [id]
+    );
+
+    if (!member) {
+      setFlash(req, "Membership not found.");
+      return res.redirect("/add-membership");
+    }
+
+    if (member.Status !== "Cancelled") {
+      setFlash(req, "Only cancelled memberships can be restored.");
+      return res.redirect("/add-membership");
+    }
+
+    await pool.query(
+      `UPDATE Membership
+       SET Status      = 'Active',
+           Date_Exited = DATE_ADD(CURDATE(), INTERVAL 1 YEAR),
+           Updated_By  = ?
+       WHERE Membership_ID = ?`,
+      [req.session.user.username, id]
+    );
+
+    await pool.query(
+      `INSERT INTO manager_notifications (source_table, source_id, message)
+       VALUES ('Membership', ?, ?)`,
+      [id, `Membership #${id} was restored to Active by ${req.session.user.name} (${req.session.user.email}). New expiry: 1 year from today.`]
+    );
+
+    setFlash(req, "Membership restored. New expiry set to 1 year from today.");
     res.redirect("/add-membership");
   }));
 

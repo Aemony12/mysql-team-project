@@ -381,9 +381,15 @@ ${cart.length === 0 ? "<p>No tickets added yet</p>" : `
   return sum + finalPrice * item.qty;
 }, 0).toFixed(2)}</h3>
 
-  <form method="post" action="/sell-ticket/checkout">
-  <button class="button">Process Sale</button>
-  </form>
+  <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+    <form method="post" action="/sell-ticket/checkout">
+      <button class="button">Process Sale</button>
+    </form>
+    <form method="post" action="/sell-ticket/clear"
+          onsubmit="return confirm('Clear the cart and start over?');">
+      <button class="button button-secondary" type="submit">Cancel Order</button>
+    </form>
+  </div>
 `}
     `,
     }));
@@ -542,6 +548,18 @@ app.post("/sell-ticket/add", requireLogin, allowRoles(["admissions", "employee",
     req.session.visitDate = null;
 
     res.redirect("/dashboard");
+  }));
+
+  // Clear the cart and all visitor session data — fixes the softlock when a
+  // sale fails (e.g. expired membership) and staff want to start fresh.
+  app.post("/sell-ticket/clear", requireLogin, allowRoles(["admissions", "employee", "supervisor"]), asyncHandler(async (req, res) => {
+    req.session.ticketCart = [];
+    req.session.visitorEmail = null;
+    req.session.visitorPhone = null;
+    req.session.membershipId = null;
+    req.session.visitDate = null;
+    setFlash(req, "Cart cleared. Ready for a new order.");
+    res.redirect("/sell-ticket");
   }));
 }
 
