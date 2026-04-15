@@ -3,6 +3,7 @@ const {
   escapeHtml,
   formatDateInput,
   formatDisplayDate,
+  getExhibitionAsset,
   getPageNumber,
   paginateRows,
   renderFlash,
@@ -13,6 +14,60 @@ const {
   allowRoles,
   logTriggerViolation
 } = require("../helpers");
+
+function renderEventBrowseCards(events, membershipActive, hasTicket) {
+  if (!events.length) {
+    return '<div class="empty-state"><p>No upcoming events available.</p></div>';
+  }
+
+  return `
+    <div class="feature-grid">
+      ${events.map((ev) => {
+        const asset = getExhibitionAsset(ev.event_Name);
+        const spotsLeft = ev.Max_capacity - ev.Registered_Count;
+        const isFull = spotsLeft <= 0;
+        const isRegistered = ev.Already_Registered > 0;
+        let status = '<span class="status-badge status-badge--success">Open</span>';
+        if (isRegistered) status = '<span class="status-badge status-badge--success">Registered</span>';
+        else if (isFull) status = '<span class="status-badge status-badge--danger">Sold Out</span>';
+        else if (!membershipActive) status = '<span class="status-badge status-badge--warning">Membership Inactive</span>';
+        else if (!hasTicket) status = '<span class="status-badge status-badge--warning">Ticket Required</span>';
+
+        const action = isRegistered
+          ? '<p class="section-lead">You are already registered for this event.</p>'
+          : isFull
+          ? '<p class="section-lead">This event has reached capacity.</p>'
+          : !membershipActive
+          ? '<p class="section-lead">Renew membership before registering.</p>'
+          : !hasTicket
+          ? '<a class="button button-secondary" href="/purchase-ticket">Buy Ticket First</a>'
+          : `
+            <form method="post" action="/event-register">
+              <input type="hidden" name="event_id" value="${ev.event_ID}">
+              <button class="button" type="submit">Register</button>
+            </form>
+          `;
+
+        return `
+          <article class="feature-card">
+            <div class="feature-card__media"><img src="${asset.imagePath}" alt="${asset.alt}"></div>
+            <div class="feature-card__body">
+              <p class="eyebrow">${ev.member_only ? "Members Only" : "Museum Program"}</p>
+              <h2>${escapeHtml(ev.event_Name)}</h2>
+              <p>${formatDisplayDate(ev.start_Date)}${ev.start_Date !== ev.end_Date ? ` to ${formatDisplayDate(ev.end_Date)}` : ""}</p>
+              <div class="collection-card__meta">
+                ${status}
+                <span class="status-badge status-badge--neutral">${spotsLeft > 0 ? `${spotsLeft} left` : "0 left"}</span>
+              </div>
+              <p>Coordinator: ${escapeHtml(ev.Coordinator_Name || "TBD")}</p>
+              ${action}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
 
 function registerEventRegistrationRoutes(app, { pool }) {
   app.get("/add-event-registration", requireLogin, allowRoles(["employee", "supervisor"]), asyncHandler(async (req, res) => {
@@ -68,69 +123,70 @@ function registerEventRegistrationRoutes(app, { pool }) {
     res.send(renderPage({
       title: "Manage Event Registrations",
       user: req.session.user,
+      currentPath: req.path,
       content: `
-      <section class="card narrow">
-        <h1>${editReg ? "Edit Registration" : "Add Event Registration"}</h1>
-        ${renderFlash(req)}
-        <form method="post" action="/add-event-registration" class="form-grid">
-          ${editReg ? `<input type="hidden" name="registration_id" value="${editReg.Event_Registration_ID}">` : ""}
-          <label>Event
-            <select name="event_id" required>
-              <option value="">Select Event</option>
-              ${events.map((ev) => `
-                <option value="${ev.event_ID}" ${editReg && editReg.Event_ID === ev.event_ID ? "selected" : ""}>
-                  ${escapeHtml(ev.event_Name)}
-                </option>
-              `).join("")}
-            </select>
-          </label>
-          <label>Member
-            <select name="membership_id" required>
-              <option value="">Select Member</option>
-              ${members.map((m) => `
-                <option value="${m.Membership_ID}" ${editReg && editReg.Membership_ID === m.Membership_ID ? "selected" : ""}>
-                  ${escapeHtml(m.First_Name)} ${escapeHtml(m.Last_Name)}
-                </option>
-              `).join("")}
-            </select>
-          </label>
-          <label>Ticket
-            <select name="ticket_id" required>
-              <option value="">Select Ticket</option>
-              ${tickets.map((t) => `
-                <option value="${t.Ticket_ID}" ${editReg && editReg.Ticket_ID === t.Ticket_ID ? "selected" : ""}>
-                  Ticket #${t.Ticket_ID}
-                </option>
-              `).join("")}
-            </select>
-          </label>
-          <label>Registration Date
-            <input type="date" name="registration_date" value="${editReg ? formatDateInput(editReg.Registration_Date) : ""}" required>
-          </label>
-          <button class="button" type="submit">${editReg ? "Update Registration" : "Add Registration"}</button>
-        </form>
-      </section>
-      <section class="card narrow">
-        <div id="registration-list"></div>
-        <h2>Current Registrations</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Event</th>
-              <th>Member</th>
-              <th>Ticket</th>
-              <th>Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${regRows || '<tr><td colspan="6">No registrations found.</td></tr>'}
-          </tbody>
-        </table>
-        ${renderPager(req, "registration_page", registrationPagination, "registration-list")}
-      </section>
-    `,
+        <section class="card narrow">
+          <h1>${editReg ? "Edit Registration" : "Add Event Registration"}</h1>
+          ${renderFlash(req)}
+          <form method="post" action="/add-event-registration" class="form-grid">
+            ${editReg ? `<input type="hidden" name="registration_id" value="${editReg.Event_Registration_ID}">` : ""}
+            <label>Event
+              <select name="event_id" required>
+                <option value="">Select Event</option>
+                ${events.map((ev) => `
+                  <option value="${ev.event_ID}" ${editReg && editReg.Event_ID === ev.event_ID ? "selected" : ""}>
+                    ${escapeHtml(ev.event_Name)}
+                  </option>
+                `).join("")}
+              </select>
+            </label>
+            <label>Member
+              <select name="membership_id" required>
+                <option value="">Select Member</option>
+                ${members.map((m) => `
+                  <option value="${m.Membership_ID}" ${editReg && editReg.Membership_ID === m.Membership_ID ? "selected" : ""}>
+                    ${escapeHtml(m.First_Name)} ${escapeHtml(m.Last_Name)}
+                  </option>
+                `).join("")}
+              </select>
+            </label>
+            <label>Ticket
+              <select name="ticket_id" required>
+                <option value="">Select Ticket</option>
+                ${tickets.map((t) => `
+                  <option value="${t.Ticket_ID}" ${editReg && editReg.Ticket_ID === t.Ticket_ID ? "selected" : ""}>
+                    Ticket #${t.Ticket_ID}
+                  </option>
+                `).join("")}
+              </select>
+            </label>
+            <label>Registration Date
+              <input type="date" name="registration_date" value="${editReg ? formatDateInput(editReg.Registration_Date) : ""}" required>
+            </label>
+            <button class="button" type="submit">${editReg ? "Update Registration" : "Add Registration"}</button>
+          </form>
+        </section>
+        <section class="card narrow">
+          <div id="registration-list"></div>
+          <h2>Current Registrations</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Event</th>
+                <th>Member</th>
+                <th>Ticket</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${regRows || '<tr><td colspan="6">No registrations found.</td></tr>'}
+            </tbody>
+          </table>
+          ${renderPager(req, "registration_page", registrationPagination, "registration-list")}
+        </section>
+      `,
     }));
   }));
 
@@ -193,8 +249,6 @@ function registerEventRegistrationRoutes(app, { pool }) {
     res.redirect("/add-event-registration");
   }));
 
-  // ── Member-facing event registration ──────────────────────────────────────
-
   app.get("/event-register", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
     const membershipId = req.session.user.membershipId;
 
@@ -239,48 +293,11 @@ function registerEventRegistrationRoutes(app, { pool }) {
       ORDER BY ev.start_Date DESC
     `, [membershipId]);
 
-    // Check if member has any tickets (required by event_registration schema)
     const [[ticketCheck]] = await pool.query(
       `SELECT Ticket_ID FROM Ticket WHERE Membership_ID = ? ORDER BY Ticket_ID DESC LIMIT 1`,
       [membershipId]
     );
     const hasTicket = !!ticketCheck;
-
-    const eventRows = upcomingEvents.map((ev) => {
-      const spotsLeft = ev.Max_capacity - ev.Registered_Count;
-      const isFull = spotsLeft <= 0;
-      const isRegistered = ev.Already_Registered > 0;
-
-      let actionCell;
-      if (isRegistered) {
-        actionCell = `<span style="color:seagreen">&#10003; Registered</span>`;
-      } else if (isFull) {
-        actionCell = `<span style="color:gray">Full</span>`;
-      } else if (!membershipActive) {
-        actionCell = `<span style="color:gray">Membership inactive</span>`;
-      } else if (!hasTicket) {
-        actionCell = `<a class="button button-secondary" href="/purchase-ticket">Buy Ticket First</a>`;
-      } else {
-        actionCell = `
-          <form method="post" action="/event-register">
-            <input type="hidden" name="event_id" value="${ev.event_ID}">
-            <button class="button" type="submit">Register</button>
-          </form>
-        `;
-      }
-
-      return `
-        <tr>
-          <td>${escapeHtml(ev.event_Name)}</td>
-          <td>${formatDisplayDate(ev.start_Date)}</td>
-          <td>${formatDisplayDate(ev.end_Date)}</td>
-          <td>${ev.member_only ? "Members Only" : "Open"}</td>
-          <td>${escapeHtml(ev.Coordinator_Name || "—")}</td>
-          <td>${isFull ? "Full" : `${spotsLeft} spot${spotsLeft !== 1 ? "s" : ""} left`}</td>
-          <td>${actionCell}</td>
-        </tr>
-      `;
-    }).join("");
 
     const myRows = myRegistrations.map((r) => `
       <tr>
@@ -299,51 +316,51 @@ function registerEventRegistrationRoutes(app, { pool }) {
     `).join("");
 
     res.send(renderPage({
-      title: "Browse Events",
+      title: "Museum Events",
       user: req.session.user,
+      currentPath: req.path,
+      hero: {
+        eyebrow: "Member Events",
+        title: "Programs, lectures, and special museum moments",
+        description: "Upcoming events now appear as browseable cards with clearer availability, member access, and ticket requirements.",
+        imagePath: "/images/spring-exhibition-opening-gala.jpg",
+        alt: "Museum event scene.",
+        actions: [
+          { href: "#upcoming-events", label: "Browse Events" },
+          { href: "/purchase-ticket", label: "Buy Admission", secondary: true },
+        ],
+      },
+      alertContent: !membershipActive
+        ? { type: "warning", title: "Membership inactive", message: `Your membership is ${memberInfo?.Status ?? "inactive"}. Renew before registering for events.` }
+        : !hasTicket
+        ? { type: "info", title: "Admission ticket required", message: "You need an admission ticket on file before you can register for museum events." }
+        : null,
       content: `
-      <section class="card narrow">
-        <p class="eyebrow">Member Portal</p>
-        <h1>Upcoming Events</h1>
-        <p class="dashboard-note">Register for upcoming museum events. Spots are limited — register early.</p>
-        ${!membershipActive ? `<p class="flash" style="background:#fee2e2;border-color:#f87171;">Your membership is <strong>${escapeHtml(memberInfo?.Status ?? "inactive")}</strong>. You cannot register for events until your membership is renewed. <a href="/purchase-ticket">Go to membership page</a>.</p>` : ""}
-        ${!membershipActive ? "" : !hasTicket ? `<p class="flash">You need an admission ticket to register for events. <a href="/purchase-ticket">Buy tickets here</a>.</p>` : ""}
-        ${renderFlash(req)}
-        <table>
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Access</th>
-              <th>Coordinator</th>
-              <th>Availability</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${eventRows || '<tr><td colspan="7">No upcoming events available.</td></tr>'}
-          </tbody>
-        </table>
-      </section>
-
-      <section class="card narrow">
-        <h2>My Registrations</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Registered On</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${myRows || '<tr><td colspan="5">You have no event registrations.</td></tr>'}
-          </tbody>
-        </table>
-      </section>
+        <section class="card" id="upcoming-events">
+          <p class="eyebrow">Upcoming Events</p>
+          <h2>Choose an event</h2>
+          <p class="section-lead">Availability, access, and next steps are visible on each card instead of hidden in a wide table.</p>
+          ${renderFlash(req)}
+          ${renderEventBrowseCards(upcomingEvents, membershipActive, hasTicket)}
+        </section>
+        <section class="card">
+          <p class="eyebrow">My Registrations</p>
+          <h2>Registered programs</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Registered On</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${myRows || '<tr><td colspan="5">You have no event registrations.</td></tr>'}
+            </tbody>
+          </table>
+        </section>
       `,
     }));
   }));
@@ -357,7 +374,6 @@ function registerEventRegistrationRoutes(app, { pool }) {
       return res.redirect("/event-register");
     }
 
-    // Check membership is Active before allowing registration
     const [[memberStatus]] = await pool.query(
       "SELECT Status FROM Membership WHERE Membership_ID = ?",
       [membershipId]
@@ -368,7 +384,6 @@ function registerEventRegistrationRoutes(app, { pool }) {
       return res.redirect("/event-register");
     }
 
-    // Get the member's most recent ticket
     const [[latestTicket]] = await pool.query(
       `SELECT Ticket_ID FROM Ticket WHERE Membership_ID = ? ORDER BY Ticket_ID DESC LIMIT 1`,
       [membershipId]

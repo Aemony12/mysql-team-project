@@ -286,6 +286,49 @@ BEGIN
     END IF;
 END$$
 
+DROP TRIGGER IF EXISTS trigger_check_gift_shop_stock_update$$
+CREATE TRIGGER trigger_check_gift_shop_stock_update
+BEFORE UPDATE ON Gift_Shop_Sale_Line
+FOR EACH ROW
+BEGIN
+    DECLARE available INT;
+
+    SELECT Stock_Quantity INTO available
+    FROM Gift_Shop_Item
+    WHERE Gift_Shop_Item_ID = NEW.Gift_Shop_Item_ID;
+
+    IF NEW.Gift_Shop_Item_ID = OLD.Gift_Shop_Item_ID THEN
+        SET available = available + OLD.Quantity;
+    END IF;
+
+    IF available < NEW.Quantity THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient stock for this item';
+    END IF;
+END$$
+
+DROP TRIGGER IF EXISTS trigger_prevent_negative_gift_shop_stock_insert$$
+CREATE TRIGGER trigger_prevent_negative_gift_shop_stock_insert
+BEFORE INSERT ON Gift_Shop_Item
+FOR EACH ROW
+BEGIN
+    IF NEW.Stock_Quantity < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Gift shop stock cannot be negative';
+    END IF;
+END$$
+
+DROP TRIGGER IF EXISTS trigger_prevent_negative_gift_shop_stock_update$$
+CREATE TRIGGER trigger_prevent_negative_gift_shop_stock_update
+BEFORE UPDATE ON Gift_Shop_Item
+FOR EACH ROW
+BEGIN
+    IF NEW.Stock_Quantity < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Gift shop stock cannot be negative';
+    END IF;
+END$$
+
 -- Trigger: alert manager when an employee earns more than their supervisor
 -- Subquery looks up the supervisor's salary using NEW.Supervisor_ID and compares inline.
 -- No SIGNAL here — the employee is still saved, management just gets notified.
@@ -433,6 +476,46 @@ BEGIN
     IF available < NEW.Quantity THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Insufficient food stock for this item';
+    END IF;
+END$$
+
+DROP TRIGGER IF EXISTS trigger_check_food_stock_update$$
+CREATE TRIGGER trigger_check_food_stock_update
+BEFORE UPDATE ON Food_Sale_Line
+FOR EACH ROW
+BEGIN
+    DECLARE available INT;
+    SELECT Stock_Quantity INTO available FROM Food WHERE Food_ID = NEW.Food_ID;
+
+    IF NEW.Food_ID = OLD.Food_ID THEN
+        SET available = available + OLD.Quantity;
+    END IF;
+
+    IF available < NEW.Quantity THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient food stock for this item';
+    END IF;
+END$$
+
+DROP TRIGGER IF EXISTS trigger_prevent_negative_food_stock_insert$$
+CREATE TRIGGER trigger_prevent_negative_food_stock_insert
+BEFORE INSERT ON Food
+FOR EACH ROW
+BEGIN
+    IF NEW.Stock_Quantity < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Food stock cannot be negative';
+    END IF;
+END$$
+
+DROP TRIGGER IF EXISTS trigger_prevent_negative_food_stock_update$$
+CREATE TRIGGER trigger_prevent_negative_food_stock_update
+BEFORE UPDATE ON Food
+FOR EACH ROW
+BEGIN
+    IF NEW.Stock_Quantity < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Food stock cannot be negative';
     END IF;
 END$$
 

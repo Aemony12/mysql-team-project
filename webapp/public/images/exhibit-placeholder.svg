@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Exhibition Placeholder</title>
+  <desc id="desc">Museum gallery placeholder image with arch shapes and visitors.</desc>
+  <rect width="1200" height="800" fill="#e7e0d6"/>
+  <rect y="520" width="1200" height="280" fill="#c9d3d9"/>
+  <path d="M0 210C160 110 300 70 480 90s300 120 420 116 222-42 300-86v400H0z" fill="#526676"/>
+  <path d="M220 520V250c0-96 78-174 174-174s174 78 174 174v270z" fill="#f1ebdf"/>
+  <path d="M520 520V226c0-122 98-220 220-220s220 98 220 220v294z" fill="#d5c18d"/>
+  <circle cx="420" cy="520" r="28" fill="#2d2a25"/>
+  <rect x="405" y="545" width="30" height="120" fill="#2d2a25"/>
+  <circle cx="770" cy="500" r="26" fill="#2d2a25"/>
+  <rect x="755" y="525" width="28" height="135" fill="#2d2a25"/>
+  <rect x="70" y="650" width="280" height="78" fill="#8f4a43"/>
+  <text x="210" y="700" text-anchor="middle" font-family="Source Sans 3, Arial, sans-serif" font-size="36" fill="#ffffff" letter-spacing="4">
+    EXHIBITION IMAGE
+  </text>
+</svg>

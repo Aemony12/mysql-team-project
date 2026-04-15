@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Artwork Placeholder</title>
+  <desc id="desc">Neutral museum artwork placeholder with a framed panel and caption.</desc>
+  <rect width="800" height="1000" fill="#efe8de"/>
+  <rect x="110" y="90" width="580" height="700" fill="#d9cfc0" stroke="#8f4a43" stroke-width="22"/>
+  <rect x="160" y="140" width="480" height="600" fill="#f8f4ed"/>
+  <circle cx="280" cy="330" r="72" fill="#c7b79d"/>
+  <path d="M210 590c88-124 165-161 230-111 42 32 66 76 138 58l62 103H210z" fill="#b29d82"/>
+  <rect x="235" y="845" width="330" height="58" rx="4" fill="#526676"/>
+  <text x="400" y="881" text-anchor="middle" font-family="Source Sans 3, Arial, sans-serif" font-size="30" fill="#ffffff" letter-spacing="3">
+    IMAGE PENDING
+  </text>
+</svg>

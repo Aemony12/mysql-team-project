@@ -158,31 +158,41 @@ function registerCafeRoutes(app, { pool }) {
     const { food_name: foodName, food_price: foodPrice, stock, type } = req.body;
     const foodHasTypeColumn = await hasFoodTypeColumn();
     const foodHasStockColumn = await hasFoodStockColumn();
+    const parsedPrice = Number.parseFloat(foodPrice);
+    const parsedStock = foodHasStockColumn ? Number.parseInt(stock, 10) : null;
 
     if (!foodName || !foodPrice || (foodHasStockColumn && (stock === undefined || stock === "")) || (foodHasTypeColumn && !type)) {
       setFlash(req, "All fields are required.");
       return res.redirect("/add-food");
     }
+    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+      setFlash(req, "Price must be 0 or greater.");
+      return res.redirect(foodId ? `/add-food?edit_id=${foodId}` : "/add-food");
+    }
+    if (foodHasStockColumn && (!Number.isInteger(parsedStock) || parsedStock < 0)) {
+      setFlash(req, "Stock cannot be negative.");
+      return res.redirect(foodId ? `/add-food?edit_id=${foodId}` : "/add-food");
+    }
     if (foodId) {
       if (foodHasTypeColumn && foodHasStockColumn) {
         await pool.query(
           "UPDATE Food SET Food_Name = ?, Food_Price = ?, Stock_Quantity = ?, Type = ? WHERE Food_ID = ?",
-          [foodName, foodPrice, stock, type, foodId],
+          [foodName, parsedPrice, parsedStock, type, foodId],
         );
       } else if (foodHasStockColumn) {
         await pool.query(
           "UPDATE Food SET Food_Name = ?, Food_Price = ?, Stock_Quantity = ? WHERE Food_ID = ?",
-          [foodName, foodPrice, stock, foodId],
+          [foodName, parsedPrice, parsedStock, foodId],
         );
       } else if (foodHasTypeColumn) {
         await pool.query(
           "UPDATE Food SET Food_Name = ?, Food_Price = ?, Type = ? WHERE Food_ID = ?",
-          [foodName, foodPrice, type, foodId],
+          [foodName, parsedPrice, type, foodId],
         );
       } else {
         await pool.query(
           "UPDATE Food SET Food_Name = ?, Food_Price = ? WHERE Food_ID = ?",
-          [foodName, foodPrice, foodId],
+          [foodName, parsedPrice, foodId],
         );
       }
       setFlash(req, "Item updated.");
@@ -190,22 +200,22 @@ function registerCafeRoutes(app, { pool }) {
       if (foodHasTypeColumn && foodHasStockColumn) {
         await pool.query(
           "INSERT INTO Food (Food_Name, Food_Price, Stock_Quantity, Type) VALUES (?, ?, ?, ?)",
-          [foodName, foodPrice, stock, type],
+          [foodName, parsedPrice, parsedStock, type],
         );
       } else if (foodHasStockColumn) {
         await pool.query(
           "INSERT INTO Food (Food_Name, Food_Price, Stock_Quantity) VALUES (?, ?, ?)",
-          [foodName, foodPrice, stock],
+          [foodName, parsedPrice, parsedStock],
         );
       } else if (foodHasTypeColumn) {
         await pool.query(
           "INSERT INTO Food (Food_Name, Food_Price, Type) VALUES (?, ?, ?)",
-          [foodName, foodPrice, type],
+          [foodName, parsedPrice, type],
         );
       } else {
         await pool.query(
           "INSERT INTO Food (Food_Name, Food_Price) VALUES (?, ?)",
-          [foodName, foodPrice],
+          [foodName, parsedPrice],
         );
       }
       setFlash(req, "Item added.");
@@ -215,12 +225,16 @@ function registerCafeRoutes(app, { pool }) {
 
   app.post("/delete-food", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const idToDelete = req.body.food_id;
+    if (!idToDelete) {
+      setFlash(req, "No cafe item ID provided.");
+      return res.redirect("/add-food");
+    }
 
     try {
       await pool.query("DELETE FROM Food WHERE Food_ID = ?", [idToDelete]);
       setFlash(req, "Café item deleted.");
     } catch (err) {
-      if (err.code === "ER_ROW_IS_REFERENCED_2") {
+      if (err.code === "ER_ROW_IS_REFERENCED_2" || err.code === "ER_ROW_IS_REFERENCED") {
         setFlash(req, "Cannot delete: this item has existing sale records.");
       } else {
         throw err;
@@ -731,6 +745,7 @@ function registerCafeRoutes(app, { pool }) {
   app.post("/order/update-item", requireLogin, allowRoles(["cafe", "supervisor", "employee"]), asyncHandler(async (req, res) => {
   const { food_id, quantity } = req.body;
   const qty = Number.parseInt(quantity, 10);
+  const foodHasStockColumn = await hasFoodStockColumn();
 
   if (!qty || qty < 1) {
     setFlash(req, "Invalid quantity.");
@@ -742,6 +757,16 @@ function registerCafeRoutes(app, { pool }) {
   const item = req.session.cart.find(i => i.id == food_id);
 
   if (item) {
+    if (foodHasStockColumn) {
+      const [[stockRow]] = await pool.query(
+        "SELECT Stock_Quantity, Food_Name FROM Food WHERE Food_ID = ?",
+        [food_id]
+      );
+      if (!stockRow || qty > stockRow.Stock_Quantity) {
+        setFlash(req, `Only ${stockRow?.Stock_Quantity ?? 0} portions available for "${stockRow?.Food_Name || "item"}".`);
+        return res.redirect("/order");
+      }
+    }
     item.qty = qty;
   }
 

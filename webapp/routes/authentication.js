@@ -1,101 +1,223 @@
 const {
-  asyncHandler,
+  getExhibitionAsset,
+  getRoleAsset,
   renderFlash,
   renderPage,
   setFlash,
+  asyncHandler,
 } = require("../helpers");
 
-function registerAuthenticationRoutes(app, { pool }) {
-
-  app.get("/", (req, res) => {
-    res.send(renderPage({
-      title: "The Museum of Fine Arts, Houston",
-      user: req.session.user,
-      content: `
-      <section class="hero hero-grid reveal">
-        <div class="hero-copy card">
-          <p class="eyebrow">Museum Operations</p>
-          <h1>Museum staff and member access.</h1>
-          <p class="hero-lead">Use one portal for admissions, memberships, collections, reporting, retail, and café operations with clearer navigation and more readable controls.</p>
-          <div class="button-row">
-            ${req.session.user ? '<a class="button" href="/dashboard">Open Dashboard</a>' : '<a class="button" href="/login">Staff Login</a>'}
-            ${req.session.user ? '' : '<a class="button button-secondary" href="/signup">Member Access</a>'}
+function renderLoginPage({ req, title, eyebrow, heading, intro, action, secondaryLink, hiddenAudience, mediaTitle, mediaCopy, imagePath }) {
+  return renderPage({
+    title,
+    user: req.session.user,
+    currentPath: req.path,
+    pageTheme: hiddenAudience === "member" ? "member-entry" : "staff-entry",
+    content: `
+      <section class="card auth-card auth-shell">
+        <div class="auth-panel">
+          <p class="eyebrow">${eyebrow}</p>
+          <h1>${heading}</h1>
+          <p class="auth-intro">${intro}</p>
+          ${renderFlash(req)}
+          <form id="login-form" method="post" action="/login" class="form-grid">
+            <input type="hidden" name="audience" value="${hiddenAudience}">
+            <label>Email<input type="email" name="email" required autocomplete="email"></label>
+            <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+          </form>
+          <div class="button-row form-actions">
+            <button class="button" type="submit" form="login-form">${action}</button>
+            ${secondaryLink}
           </div>
         </div>
-        <aside class="hero-visual card">
-          <p class="eyebrow">Portal Areas</p>
-          <div class="hero-panel-list">
-            <section class="hero-panel-item">
-              <h2>Front Desk</h2>
-              <p>Admissions sales, visitor memberships, and guided tour assistance.</p>
-            </section>
-            <section class="hero-panel-item">
-              <h2>Collections</h2>
-              <p>Artists, artworks, exhibitions, conservation, and outgoing loans.</p>
-            </section>
-            <section class="hero-panel-item">
-              <h2>Operations</h2>
-              <p>Scheduling, events, reports, retail, and café transaction management.</p>
-            </section>
+        <aside class="auth-media">
+          <img src="${imagePath}" alt="${mediaTitle}">
+          <div class="auth-media__overlay"></div>
+          <div class="auth-media__content">
+            <p class="eyebrow">${eyebrow}</p>
+            <h2>${mediaTitle}</h2>
+            <p>${mediaCopy}</p>
           </div>
         </aside>
       </section>
     `,
+  });
+}
+
+function registerAuthenticationRoutes(app, { pool }) {
+  app.get("/", (req, res) => {
+    const visitAsset = getExhibitionAsset("Spring Collection 2026");
+    res.send(renderPage({
+      title: "The Museum of Fine Arts, Houston",
+      user: req.session.user,
+      currentPath: req.path,
+      hero: {
+        eyebrow: "Museum Visit Planning",
+        title: "A clearer museum experience for members, staff, and supervisors.",
+        description: "Explore tickets, collections, events, memberships, and operational workspaces through a layout modeled after the MFAH site instead of walls of buttons.",
+        videoPath: "/images/homepage-museum-video.mp4",
+        posterPath: visitAsset.imagePath,
+        actions: req.session.user ? [
+          { href: "/dashboard", label: "Open Overview" },
+        ] : [
+          { href: "/member-login", label: "Plan Your Visit" },
+          { href: "/staff-login", label: "Staff Login", secondary: true },
+        ],
+        details: [
+          { label: "Visit", title: "Tickets and Membership", description: "Guide first-time visitors with obvious next steps for admission, tours, and account access." },
+          { label: "Art", title: "Collection Search", description: "Browse artworks and exhibitions with imagery, stronger labels, and museum-style framing." },
+          { label: "Operations", title: "Role-Based Workspaces", description: "Admissions, retail, cafe, curatorial, and supervisor areas now feel distinct." },
+        ],
+      },
+      featureCards: [
+        {
+          eyebrow: "Visit",
+          title: "Admission and Membership",
+          description: "Buy tickets, review member benefits, and plan a clear museum visit experience.",
+          href: req.session.user ? "/purchase-ticket" : "/member-login",
+          linkLabel: "Plan Your Visit",
+          imagePath: "/images/summer-showcase.jpg",
+          alt: "Visitors entering a museum exhibition.",
+        },
+        {
+          eyebrow: "Art",
+          title: "Explore the Collection",
+          description: "Search artworks, exhibitions, and collection status using an image-led gallery layout.",
+          href: req.session.user ? "/queries" : "/member-login",
+          linkLabel: "Explore Art",
+          imagePath: "/images/the-farnese-hours.jpg",
+          alt: "Historic illuminated artwork from the collection.",
+        },
+        {
+          eyebrow: "Events",
+          title: "Tours and Programs",
+          description: "Browse guided tours, museum programs, and special events without confusing tables as the first impression.",
+          href: req.session.user ? "/event-register" : "/member-login",
+          linkLabel: "View Events",
+          imagePath: "/images/spring-exhibition-opening-gala.jpg",
+          alt: "Museum event gathering.",
+        },
+        {
+          eyebrow: "Access",
+          title: "Choose the Right Entrance",
+          description: "Members and staff now use separate, clearly labeled entry points with role-specific guidance.",
+          href: "/staff-login",
+          linkLabel: "Open Login Options",
+          imagePath: "/images/spring-collection.jpg",
+          alt: "Museum interior with visitors.",
+        },
+      ],
+      content: `
+        <section class="card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Choose Your Portal</p>
+              <h2>Start from the page that matches your role.</h2>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div class="feature-card__media"><img src="/images/summer-showcase.jpg" alt="Member visit planning area."></div>
+              <div class="feature-card__body">
+                <p class="eyebrow">Members</p>
+                <h2>Tickets, Tours, and Events</h2>
+                <p>Use the member portal to buy admission, register for events, and explore the museum collection.</p>
+                <a class="feature-card__link" href="/member-login">Member Login</a>
+              </div>
+            </article>
+            <article class="feature-card">
+              <div class="feature-card__media"><img src="/images/spring-exhibition-opening-gala.jpg" alt="Museum staff and operations area."></div>
+              <div class="feature-card__body">
+                <p class="eyebrow">Staff</p>
+                <h2>Operations and Oversight</h2>
+                <p>Admissions, gift shop, cafe, curatorial, and supervisor workspaces now use clearer navigation and stronger visual hierarchy.</p>
+                <a class="feature-card__link" href="/staff-login">Staff Login</a>
+              </div>
+            </article>
+          </div>
+        </section>
+      `,
     }));
   });
 
-  app.get("/login", (req, res) => {
-    res.send(renderPage({
-      title: "Log In",
-      user: req.session.user,
-      content: `
-      <section class="card auth-card narrow reveal">
-        <p class="eyebrow">Staff Access</p>
-        <h1>Log In</h1>
-        <p class="auth-intro">Use employee, admissions, retail, café, or supervisor credentials to reach your operational workspace.</p>
-        ${renderFlash(req)}
-        <form id="login-form" method="post" action="/login" class="form-grid">
-          <label>Email<input type="email" name="email" required></label>
-          <label>Password<input type="password" name="password" required></label>
-        </form>
-        <div class="button-row form-actions">
-          <button class="button" type="submit" form="login-form">Log In</button>
-          <a class="button" href="/signup">Sign Up</a>
-        </div>
-      </section>
-    `,
+  app.get("/login", (req, res) => res.redirect("/staff-login"));
+
+  app.get("/staff-login", (req, res) => {
+    res.send(renderLoginPage({
+      req,
+      title: "Staff Login",
+      eyebrow: "Staff Access",
+      heading: "Staff Login",
+      intro: "Use employee, admissions, retail, cafe, curator, or supervisor credentials to reach your operational workspace.",
+      action: "Enter Staff Portal",
+      secondaryLink: '<a class="button button-secondary" href="/member-login">Member Login</a>',
+      hiddenAudience: "staff",
+      mediaTitle: "Distinct workspaces for each museum role.",
+      mediaCopy: "Admissions focuses on tickets, gift shop on products, cafe on orders, and supervisors on alerts and oversight. The entry point should make that obvious.",
+      imagePath: getRoleAsset("supervisor").imagePath,
     }));
   });
 
-  app.get("/signup", (req, res) => {
+  app.get("/member-login", (req, res) => {
+    res.send(renderLoginPage({
+      req,
+      title: "Member Login",
+      eyebrow: "Member Access",
+      heading: "Member Login",
+      intro: "Use your member account to buy tickets, browse tours, register for events, and manage your museum visit.",
+      action: "Enter Member Portal",
+      secondaryLink: '<a class="button button-secondary" href="/member-signup">Create Member Account</a>',
+      hiddenAudience: "member",
+      mediaTitle: "Plan your visit with museum-style guidance.",
+      mediaCopy: "The member side centers on admission, exhibitions, tours, and upcoming programs instead of technical forms.",
+      imagePath: getRoleAsset("user").imagePath,
+    }));
+  });
+
+  app.get("/signup", (req, res) => res.redirect("/member-signup"));
+
+  app.get("/member-signup", (req, res) => {
     res.send(renderPage({
-      title: "Sign Up",
+      title: "Member Sign Up",
       user: req.session.user,
+      currentPath: req.path,
       content: `
-      <section class="card auth-card narrow reveal">
-        <p class="eyebrow">Member Access</p>
-        <h1>Member Sign Up</h1>
-        <p class="auth-intro">Create a member record for tickets, tours, and museum account access.</p>
-        ${renderFlash(req)}
-        <form id="signup-form" method="post" action="/signup" class="form-grid">
-          <label>First Name<input type="text" name="first_name" required></label>
-          <label>Last Name<input type="text" name="last_name" required></label>
-          <label>Email<input type="email" name="email" required></label>
-          <label>Phone<input type="tel" name="phone"></label>
-          <label>Password<input type="password" name="password" required></label>
-        </form>
-        <div class="button-row form-actions">
-          <button class="button" type="submit" form="signup-form">Create Account</button>
-          <a class="button" href="/login">Log In</a>
-        </div>
-      </section>
-    `,
+        <section class="card auth-card auth-shell">
+          <div class="auth-panel">
+            <p class="eyebrow">Member Access</p>
+            <h1>Create a Member Account</h1>
+            <p class="auth-intro">Start with a guided museum account for tickets, tours, events, and membership access.</p>
+            ${renderFlash(req)}
+            <form id="signup-form" method="post" action="/signup" class="form-grid">
+              <label>First Name<input type="text" name="first_name" required autocomplete="given-name"></label>
+              <label>Last Name<input type="text" name="last_name" required autocomplete="family-name"></label>
+              <label>Email<input type="email" name="email" required autocomplete="email"></label>
+              <label>Phone<input type="tel" name="phone" autocomplete="tel"></label>
+              <label>Password<input type="password" name="password" required autocomplete="new-password"></label>
+            </form>
+            <div class="button-row form-actions">
+              <button class="button" type="submit" form="signup-form">Create Account</button>
+              <a class="button button-secondary" href="/member-login">Member Login</a>
+            </div>
+          </div>
+          <aside class="auth-media">
+            <img src="/images/spring-collection.jpg" alt="Museum membership sign up experience.">
+            <div class="auth-media__overlay"></div>
+            <div class="auth-media__content">
+              <p class="eyebrow">Membership</p>
+              <h2>Use one account for admission, tours, and events.</h2>
+              <p>Sign-up should feel like the beginning of a museum visit, not a database worksheet.</p>
+            </div>
+          </aside>
+        </section>
+      `,
     }));
   });
 
   app.post("/login", asyncHandler(async (req, res) => {
     const email = req.body.email?.trim().toLowerCase();
     const submittedCredential = req.body.password?.trim();
+    const audience = req.body.audience === "member" ? "member" : "staff";
 
     const [rows] = await pool.query(
       `SELECT id, name, email, password AS stored_credential, role, is_active, employee_id, membership_id
@@ -107,7 +229,18 @@ function registerAuthenticationRoutes(app, { pool }) {
     const authenticatedUser = rows[0];
     if (!authenticatedUser || authenticatedUser.stored_credential !== submittedCredential || !authenticatedUser.is_active) {
       setFlash(req, "Invalid login credentials.");
-      return res.redirect("/login");
+      return res.redirect(audience === "member" ? "/member-login" : "/staff-login");
+    }
+
+    const isMember = authenticatedUser.role === "user";
+    if (audience === "member" && !isMember) {
+      setFlash(req, "This login page is for members only.");
+      return res.redirect("/member-login");
+    }
+
+    if (audience === "staff" && isMember) {
+      setFlash(req, "This login page is for staff only.");
+      return res.redirect("/staff-login");
     }
 
     req.session.user = {
@@ -131,7 +264,7 @@ function registerAuthenticationRoutes(app, { pool }) {
 
     if (!firstName || !lastName || !email || !password) {
       setFlash(req, "Please fill in all required fields.");
-      return res.redirect("/signup");
+      return res.redirect("/member-signup");
     }
 
     const [existingUsers] = await pool.query(
@@ -141,7 +274,7 @@ function registerAuthenticationRoutes(app, { pool }) {
 
     if (existingUsers.length > 0) {
       setFlash(req, "An account with that email already exists.");
-      return res.redirect("/signup");
+      return res.redirect("/member-signup");
     }
 
     const connection = await pool.getConnection();
@@ -167,7 +300,7 @@ function registerAuthenticationRoutes(app, { pool }) {
 
       if (error && error.code === "ER_DUP_ENTRY") {
         setFlash(req, "An account with that email already exists.");
-        return res.redirect("/signup");
+        return res.redirect("/member-signup");
       }
 
       throw error;
@@ -176,7 +309,7 @@ function registerAuthenticationRoutes(app, { pool }) {
     }
 
     setFlash(req, "Account created. Please log in.");
-    res.redirect("/login");
+    res.redirect("/member-login");
   }));
 
   app.post("/logout", (req, res) => {

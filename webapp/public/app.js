@@ -2,13 +2,17 @@
   const main = document.querySelector(".container");
   const hasDashboardLink = Boolean(document.querySelector('.site-nav a[href="/dashboard"]'));
   const currentPath = window.location.pathname;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   if (main && hasDashboardLink && currentPath !== "/" && currentPath !== "/dashboard") {
-    const backLink = document.createElement("a");
-    backLink.href = "/dashboard";
-    backLink.className = "dashboard-back-link";
-    backLink.textContent = "← Back to Dashboard";
-    main.prepend(backLink);
+    const existingBackLink = document.querySelector(".dashboard-back-link");
+    if (!existingBackLink) {
+      const backLink = document.createElement("a");
+      backLink.href = "/dashboard";
+      backLink.className = "dashboard-back-link";
+      backLink.textContent = "Back to Overview";
+      main.prepend(backLink);
+    }
   }
 
   const initTabs = () => {
@@ -23,6 +27,7 @@
         return;
       }
 
+      tabBar.setAttribute("role", "tablist");
       const storageKey = `tabs:${window.location.pathname}:${group}`;
       const params = new URLSearchParams(window.location.search);
       const requestedTab = params.get("view");
@@ -34,13 +39,20 @@
       const setActiveTab = (tabId, updateUrl = true, animate = true) => {
         buttons.forEach((button) => {
           const isActive = button.getAttribute("data-tab-target") === tabId;
+          const controlsId = `${group}-${button.getAttribute("data-tab-target")}`;
           button.classList.toggle("is-active", isActive);
           button.setAttribute("aria-selected", isActive ? "true" : "false");
+          button.setAttribute("tabindex", isActive ? "0" : "-1");
+          button.setAttribute("aria-controls", controlsId);
         });
 
         panels.forEach((panel) => {
+          const panelId = `${group}-${panel.getAttribute("data-tab-panel")}`;
           const isActive = panel.getAttribute("data-tab-panel") === tabId;
+          panel.id = panelId;
           panel.hidden = !isActive;
+          panel.setAttribute("role", "tabpanel");
+          panel.setAttribute("tabindex", "0");
 
           if (!isActive) {
             panel.classList.remove("is-visible");
@@ -66,9 +78,26 @@
         }
       };
 
-      buttons.forEach((button) => {
+      buttons.forEach((button, index) => {
         button.setAttribute("role", "tab");
+        button.id = `${group}-tab-${index}`;
         button.addEventListener("click", () => setActiveTab(button.getAttribute("data-tab-target")));
+        button.addEventListener("keydown", (event) => {
+          const currentIndex = buttons.indexOf(button);
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            buttons[(currentIndex + 1) % buttons.length].focus();
+          } else if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            buttons[(currentIndex - 1 + buttons.length) % buttons.length].focus();
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            buttons[0].focus();
+          } else if (event.key === "End") {
+            event.preventDefault();
+            buttons[buttons.length - 1].focus();
+          }
+        });
       });
 
       panels.forEach((panel) => {
@@ -92,8 +121,6 @@
     });
   };
 
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
   initTabs();
 
   if (reduceMotion.matches) {
@@ -102,17 +129,12 @@
   }
 
   const animated = document.querySelectorAll(
-    ".hero-copy, .hero-visual, .overview-card, .dashboard-card, .dashboard-section, .notification-item, .auth-card"
+    ".media-hero, .feature-card, .dashboard-card, .dashboard-section, .notification-item, .auth-card, .card, .portal-banner, .product-card, .collection-card"
   );
 
   animated.forEach((element, index) => {
-    if (element.classList.contains("hero-copy") || element.classList.contains("hero-visual")) {
-      element.classList.add("is-visible");
-      return;
-    }
-
     element.classList.add("reveal");
-    element.style.setProperty("--delay", `${Math.min(index * 35, 180)}ms`);
+    element.style.setProperty("--delay", `${Math.min(index * 35, 220)}ms`);
   });
 
   const observer = new IntersectionObserver((entries) => {

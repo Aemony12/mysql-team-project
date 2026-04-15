@@ -184,22 +184,19 @@ function registerMembershipRoutes(app, { pool }) {
     }
 
     if (id) {
-      // Edit: update contact info and Date_Joined.
-      // The BEFORE UPDATE trigger recalculates Date_Exited when Date_Joined changes.
       await pool.query(
         `UPDATE Membership
          SET First_Name = ?, Last_Name = ?, Email = ?, Phone_Number = ?, Date_Joined = ?,
              Updated_By = ?
          WHERE Membership_ID = ?`,
-        [firstName, lastName, email || null, phone || null, dateJoined, req.session.user.username, id]
+        [firstName, lastName, email || null, phone || null, dateJoined, req.session.user.email, id]
       );
       setFlash(req, "Membership updated.");
     } else {
-      // New member: trigger auto-sets Date_Exited and Status = 'Active'
       await pool.query(
         `INSERT INTO Membership (First_Name, Last_Name, Email, Phone_Number, Date_Joined, Created_By, Created_At)
          VALUES (?, ?, ?, ?, ?, ?, CURDATE())`,
-        [firstName, lastName, email || null, phone || null, dateJoined, req.session.user.username]
+        [firstName, lastName, email || null, phone || null, dateJoined, req.session.user.email]
       );
       setFlash(req, "Membership added. Expiry set to 1 year from join date.");
     }
@@ -240,7 +237,7 @@ function registerMembershipRoutes(app, { pool }) {
            Status      = 'Active',
            Updated_By  = ?
        WHERE Membership_ID = ?`,
-      [req.session.user.username, id]
+      [req.session.user.email, id]
     );
 
     setFlash(req, "Membership renewed for 1 year.");
@@ -261,7 +258,7 @@ function registerMembershipRoutes(app, { pool }) {
       `UPDATE Membership
        SET Status = 'Cancelled', Date_Exited = CURDATE(), Updated_By = ?
        WHERE Membership_ID = ?`,
-      [req.session.user.username, id]
+      [req.session.user.email, id]
     );
 
     setFlash(req, "Membership cancelled. Record kept for history.");
@@ -299,7 +296,7 @@ function registerMembershipRoutes(app, { pool }) {
            Date_Exited = DATE_ADD(CURDATE(), INTERVAL 1 YEAR),
            Updated_By  = ?
        WHERE Membership_ID = ?`,
-      [req.session.user.username, id]
+      [req.session.user.email, id]
     );
 
     await pool.query(

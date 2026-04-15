@@ -5,9 +5,74 @@ const {
   asyncHandler,
   escapeHtml,
   formatDisplayDate,
+  getArtworkAsset,
+  getExhibitionAsset,
+  getCafeAsset,
+  getGiftShopAsset,
   renderPage,
   requireLogin
 } = require("../helpers");
+
+function renderArtworkResults(artworkResults) {
+  if (!artworkResults.length) {
+    return '<div class="empty-state"><p>No artwork matched the selected filters.</p></div>';
+  }
+
+  return `
+    <div class="collection-grid">
+      ${artworkResults.map((artwork) => {
+        const asset = getArtworkAsset(artwork.Title, artwork.Type);
+        return `
+          <article class="collection-card">
+            <div class="collection-card__media"><img src="${asset.imagePath}" alt="${asset.alt}"></div>
+            <div class="collection-card__body">
+              <p class="eyebrow">${escapeHtml(artwork.Type)}</p>
+              <h2>${escapeHtml(artwork.Title)}</h2>
+              <p>${escapeHtml(artwork.Artist_Name)}</p>
+              <div class="collection-card__meta">
+                <span class="status-badge status-badge--neutral">${escapeHtml(artwork.Art_Style || "Style Pending")}</span>
+                <span class="status-badge status-badge--neutral">${escapeHtml(artwork.Time_Period || "Period Pending")}</span>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderProductCards(items, type) {
+  if (!items.length) {
+    return '<div class="empty-state"><p>No items matched the selected filters.</p></div>';
+  }
+
+  return `
+    <div class="product-grid">
+      ${items.map((item) => {
+        const name = item.Name_of_Item || item.Food_Name;
+        const category = item.Category || item.Type;
+        const asset = type === "giftshop"
+          ? getGiftShopAsset(name, category)
+          : getCafeAsset(name, category);
+        const price = item.Price_of_Item ?? item.Food_Price;
+        const stock = item.Stock_Quantity ?? "N/A";
+        return `
+          <article class="product-card">
+            <div class="product-card__media"><img src="${asset.imagePath}" alt="${asset.alt}"></div>
+            <div class="product-card__body">
+              <p class="eyebrow">${escapeHtml(category || (type === "giftshop" ? "Gift Shop" : "Cafe"))}</p>
+              <h2>${escapeHtml(name)}</h2>
+              <div class="product-card__meta">
+                <span class="status-badge status-badge--neutral">$${Number(price).toFixed(2)}</span>
+                <span class="status-badge status-badge--${Number(stock) > 5 ? "success" : Number(stock) > 0 ? "warning" : "danger"}">${stock} in stock</span>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
 
 function registerQueriesRoutes(app, { pool }) {
   app.get("/queries", requireLogin, asyncHandler(async (req, res) => {
@@ -15,19 +80,16 @@ function registerQueriesRoutes(app, { pool }) {
     const isSuper = user.role === "supervisor";
     const isEmp = user.role === "employee" || user.role === "cafe" || user.role === "giftshop" || user.role === "admissions" || user.role === "curator";
 
-    // -- Query: Artwork Status & Tracking
-    // -- Tracks where art is currently located: exhibition, loan, or storage.
-    // -- Joins Artwork with active Loans and current Exhibitions to find the most recent spot and condition report.
     const artworkStatusSearch = req.query.artwork_status?.trim() || null;
     const locationSearch = req.query.location?.trim() || null;
     const conditionSearch = req.query.condition?.trim() || null;
 
     const [allExhibitions] = await pool.query("SELECT Exhibition_Name FROM Exhibition ORDER BY Exhibition_Name");
     const [allInstitutions] = await pool.query("SELECT Institution_Name FROM institution ORDER BY Institution_Name");
-    const conditionStatuses = ['Excellent', 'Good', 'Fair', 'Poor', 'Critical', 'No Recent Report'];
+    const conditionStatuses = ["Excellent", "Good", "Fair", "Poor", "Critical", "No Recent Report"];
 
     const [artworkStatusResults] = await pool.query(
-      `SELECT AW.Title, 
+      `SELECT AW.Title, AW.Type,
               CASE 
                 WHEN AL_Info.Loan_ID IS NOT NULL THEN CONCAT('On Loan to: ', AL_Info.Institution_Name)
                 WHEN EX.Exhibition_ID IS NOT NULL THEN CONCAT('In Exhibition: ', EX.Exhibition_Name)
@@ -41,8 +103,8 @@ function registerQueriesRoutes(app, { pool }) {
          JOIN institution inst ON al1.Institution_ID = inst.Institution_ID
          WHERE al1.Status = 'Active' AND (al1.End_Date IS NULL OR al1.End_Date >= CURDATE())
          AND al1.Loan_ID = (
-           SELECT MAX(al2.Loan_ID) 
-           FROM artwork_loan al2 
+           SELECT MAX(al2.Loan_ID)
+           FROM artwork_loan al2
            WHERE al2.Artwork_ID = al1.Artwork_ID AND al2.Status = 'Active'
          )
        ) AL_Info ON AW.Artwork_ID = AL_Info.Artwork_ID
@@ -63,7 +125,7 @@ function registerQueriesRoutes(app, { pool }) {
        ) CR ON AW.Artwork_ID = CR.Artwork_ID
        WHERE (? IS NULL OR AW.Title LIKE CONCAT('%', ?, '%'))
          AND (? IS NULL OR (
-             CASE 
+             CASE
                 WHEN AL_Info.Loan_ID IS NOT NULL THEN AL_Info.Institution_Name
                 WHEN EX.Exhibition_ID IS NOT NULL THEN EX.Exhibition_Name
                 ELSE 'In Storage'
@@ -74,12 +136,9 @@ function registerQueriesRoutes(app, { pool }) {
       [artworkStatusSearch, artworkStatusSearch, locationSearch, locationSearch, conditionSearch, conditionSearch]
     );
 
-    // -- Query: Staff & Exhibition Assignment
-    // -- Finds which employees are assigned to which exhibitions for upcoming shifts.
-    // -- Joins Exhibition, Schedule, and Employee to list active assignments.
     const staffExhibitionSearch = req.query.staff_exhibition?.trim() || null;
     const [staffExhibitionResults] = await pool.query(
-      `SELECT EX.Exhibition_Name, 
+      `SELECT EX.Exhibition_Name,
               E.First_Name, E.Last_Name, E.Employee_Role,
               S.Shift_Date, S.Duty
        FROM Exhibition EX
@@ -112,9 +171,6 @@ function registerQueriesRoutes(app, { pool }) {
     );
     const hasGiftStockColumn = giftStockColumns.length > 0;
 
-    // -- Query: General Artwork Search
-    // -- Allows visitors to find art by artist, style, title, type, or time period.
-    // -- Joins Artwork and Artist tables to provide a comprehensive searchable list.
     const [artworkResults] = await pool.query(
       `SELECT AW.Title, AW.Type, AW.Art_Style, AW.Time_Period, AR.Artist_Name
        FROM Artwork AW
@@ -135,9 +191,6 @@ function registerQueriesRoutes(app, { pool }) {
       ],
     );
 
-    // -- Query: Exhibition Date Range
-    // -- Finds exhibitions that are active within a specific timeframe.
-    // -- Filters by comparing Starting_Date and Ending_Date against user-provided range.
     const [exhibitionResults] = await pool.query(
       `SELECT Exhibition_Name, Starting_Date, Ending_Date
        FROM Exhibition
@@ -148,9 +201,6 @@ function registerQueriesRoutes(app, { pool }) {
       [startDate, startDate, endDate, endDate],
     );
 
-    // -- Query: Gift Shop Inventory
-    // -- Finds gift shop items by category or maximum price threshold.
-    // -- Filters the Gift_Shop_Item table for inventory management and browsing.
     const [inventoryResults] = await pool.query(
       `SELECT Name_of_Item, Category, Price_of_Item, ${hasGiftStockColumn ? "Stock_Quantity" : "NULL"} AS Stock_Quantity
        FROM Gift_Shop_Item
@@ -200,49 +250,17 @@ function registerQueriesRoutes(app, { pool }) {
       cafeFilterParams,
     );
 
-    const artworkRows = artworkResults.map((artwork) => `
-      <tr>
-        <td>${escapeHtml(artwork.Title)}</td>
-        <td>${escapeHtml(artwork.Artist_Name)}</td>
-        <td>${escapeHtml(artwork.Type)}</td>
-        <td>${escapeHtml(artwork.Art_Style || "N/A")}</td>
-        <td>${escapeHtml(artwork.Time_Period || "N/A")}</td>
-      </tr>
-    `).join("");
-
-    const exhibitionRows = exhibitionResults.map((exhibition) => `
-      <tr>
-        <td>${escapeHtml(exhibition.Exhibition_Name)}</td>
-        <td>${formatDisplayDate(exhibition.Starting_Date)}</td>
-        <td>${formatDisplayDate(exhibition.Ending_Date)}</td>
-      </tr>
-    `).join("");
-
-    const inventoryRows = inventoryResults.map((item) => `
-      <tr>
-        <td>${escapeHtml(item.Name_of_Item)}</td>
-        <td>${escapeHtml(item.Category || "N/A")}</td>
-        <td>$${Number(item.Price_of_Item).toFixed(2)}</td>
-        <td>${item.Stock_Quantity}</td>
-      </tr>
-    `).join("");
-
-    const cafeRows = cafeResults.map((item) => `
-      <tr>
-        <td>${escapeHtml(item.Food_Name)}</td>
-        <td>${escapeHtml(item.Type || "N/A")}</td>
-        <td>$${Number(item.Food_Price).toFixed(2)}</td>
-        <td>${item.Stock_Quantity}</td>
-      </tr>
-    `).join("");
-
-    const artworkStatusRows = artworkStatusResults.map((row) => `
-      <tr>
-        <td>${escapeHtml(row.Title)}</td>
-        <td>${escapeHtml(row.Current_Location)}</td>
-        ${isSuper || isEmp ? `<td>${escapeHtml(row.Last_Condition)}</td>` : ""}
-      </tr>
-    `).join("");
+    const artworkStatusRows = artworkStatusResults.map((row) => {
+      const asset = getArtworkAsset(row.Title, row.Type);
+      return `
+        <tr>
+          <td><img src="${asset.imagePath}" alt="${asset.alt}" style="width:4rem;height:4rem;object-fit:cover;"></td>
+          <td>${escapeHtml(row.Title)}</td>
+          <td>${escapeHtml(row.Current_Location)}</td>
+          ${isSuper || isEmp ? `<td>${escapeHtml(row.Last_Condition)}</td>` : ""}
+        </tr>
+      `;
+    }).join("");
 
     const staffExhibitionRows = staffExhibitionResults.map((row) => `
       <tr>
@@ -254,220 +272,210 @@ function registerQueriesRoutes(app, { pool }) {
       </tr>
     `).join("");
 
+    const exhibitionRows = exhibitionResults.map((exhibition) => {
+      const asset = getExhibitionAsset(exhibition.Exhibition_Name);
+      return `
+        <tr>
+          <td><img src="${asset.imagePath}" alt="${asset.alt}" style="width:4rem;height:4rem;object-fit:cover;"></td>
+          <td>${escapeHtml(exhibition.Exhibition_Name)}</td>
+          <td>${formatDisplayDate(exhibition.Starting_Date)}</td>
+          <td>${formatDisplayDate(exhibition.Ending_Date)}</td>
+        </tr>
+      `;
+    }).join("");
+
     res.send(renderPage({
-      title: "Museum Queries",
+      title: "Collection Search",
       user: req.session.user,
+      currentPath: req.path,
+      hero: {
+        eyebrow: "Collection Search",
+        title: "Explore artworks, exhibitions, inventory, and museum operations data",
+        description: "The search tools now feel closer to a museum collections page, with imagery, clearer categories, and tabbed browsing.",
+        imagePath: "/images/the-farnese-hours.jpg",
+        alt: "Museum collection artwork.",
+      },
+      featureCards: [
+        { eyebrow: "Collections", title: "Artwork Search", description: "Find works by title, artist, style, type, and period.", href: "#artwork-search-panel", linkLabel: "Search Artwork", imagePath: "/images/allegory.jpg", alt: "Artwork search card." },
+        { eyebrow: "Exhibitions", title: "Current and Upcoming", description: "Review exhibition timing and collection placement.", href: "#exhibition-panel", linkLabel: "View Exhibitions", imagePath: "/images/spring-collection.jpg", alt: "Exhibition card." },
+        { eyebrow: "Operations", title: "Gift Shop and Cafe", description: "Search retail and cafe inventory through the same top-level museum tools.", href: "#gift-panel", linkLabel: "Browse Inventory", imagePath: "/images/giftshop-placeholder.svg", alt: "Inventory card." },
+      ],
       content: `
-      <section class="card narrow">
-        <p class="eyebrow">Data Queries</p>
-        <h1>Museum Queries</h1>
-        <p class="dashboard-note">Advanced museum tracking with role-based visibility.</p>
-      </section>
+        <section class="card narrow">
+          <div class="tab-bar" data-tab-group="queries">
+            <button class="tab-button" type="button" data-tab-target="artwork-status">Artwork Status</button>
+            <button class="tab-button" type="button" data-tab-target="staff-exhibitions">Staffing</button>
+            <button class="tab-button" type="button" data-tab-target="artwork-search">Artwork Search</button>
+            <button class="tab-button" type="button" data-tab-target="exhibition-dates">Exhibitions</button>
+            <button class="tab-button" type="button" data-tab-target="gift-inventory">Gift Shop</button>
+            <button class="tab-button" type="button" data-tab-target="cafe-inventory">Cafe</button>
+          </div>
+        </section>
 
-      <section class="card narrow">
-        <div class="tab-bar" data-tab-group="queries">
-          <button class="tab-button" type="button" data-tab-target="artwork-status">Artwork Status</button>
-          <button class="tab-button" type="button" data-tab-target="staff-exhibitions">Staffing</button>
-          <button class="tab-button" type="button" data-tab-target="artwork-search">Artwork Search</button>
-          <button class="tab-button" type="button" data-tab-target="exhibition-dates">Exhibitions</button>
-          <button class="tab-button" type="button" data-tab-target="gift-inventory">Gift Shop</button>
-          <button class="tab-button" type="button" data-tab-target="cafe-inventory">Café</button>
-        </div>
-      </section>
+        <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="artwork-status">
+          <h2>Artwork Status and Tracking</h2>
+          <form method="get" action="/queries" class="form-grid">
+            <label>Artwork Title
+              <input type="text" name="artwork_status" value="${escapeHtml(artworkStatusSearch ?? "")}" placeholder="Title">
+            </label>
+            <label>Current Location
+              <select name="location">
+                <option value="">All Locations</option>
+                <option value="In Storage" ${locationSearch === "In Storage" ? "selected" : ""}>In Storage</option>
+                <optgroup label="Exhibitions">
+                  ${allExhibitions.map(e => `<option value="${escapeHtml(e.Exhibition_Name)}" ${locationSearch === e.Exhibition_Name ? "selected" : ""}>${escapeHtml(e.Exhibition_Name)}</option>`).join("")}
+                </optgroup>
+                <optgroup label="Institutions">
+                  ${allInstitutions.map(i => `<option value="${escapeHtml(i.Institution_Name)}" ${locationSearch === i.Institution_Name ? "selected" : ""}>${escapeHtml(i.Institution_Name)}</option>`).join("")}
+                </optgroup>
+              </select>
+            </label>
+            <label>Condition Status
+              <select name="condition">
+                <option value="">All Conditions</option>
+                ${conditionStatuses.map(s => `<option value="${escapeHtml(s)}" ${conditionSearch === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
+              </select>
+            </label>
+            <button class="button" type="submit">Track Artwork</button>
+          </form>
+          <table>
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Artwork</th>
+                <th>Current Location</th>
+                ${isSuper || isEmp ? "<th>Condition Report</th>" : ""}
+              </tr>
+            </thead>
+            <tbody>${artworkStatusRows || `<tr><td colspan="${isSuper || isEmp ? 4 : 3}">No artwork status found.</td></tr>`}</tbody>
+          </table>
+        </section>
 
-      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="artwork-status">
-        <h2>Artwork Status & Tracking</h2>
-        <form method="get" action="/queries" class="form-grid">
-          <label>Artwork Title
-            <input type="text" name="artwork_status" value="${escapeHtml(artworkStatusSearch ?? '')}" placeholder="Title">
-          </label>
-          <label>Current Location
-            <select name="location">
-              <option value="">All Locations</option>
-              <option value="In Storage" ${locationSearch === 'In Storage' ? 'selected' : ''}>In Storage</option>
-              <optgroup label="Exhibitions">
-                ${allExhibitions.map(e => `<option value="${escapeHtml(e.Exhibition_Name)}" ${locationSearch === e.Exhibition_Name ? 'selected' : ''}>${escapeHtml(e.Exhibition_Name)}</option>`).join("")}
-              </optgroup>
-              <optgroup label="Institutions">
-                ${allInstitutions.map(i => `<option value="${escapeHtml(i.Institution_Name)}" ${locationSearch === i.Institution_Name ? 'selected' : ''}>${escapeHtml(i.Institution_Name)}</option>`).join("")}
-              </optgroup>
-            </select>
-          </label>
-          <label>Condition Status
-            <select name="condition">
-              <option value="">All Conditions</option>
-              ${conditionStatuses.map(s => `<option value="${escapeHtml(s)}" ${conditionSearch === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join("")}
-            </select>
-          </label>
-          <button class="button" type="submit">Track Artwork</button>
-        </form>
-        <table>
-          <thead>
-            <tr>
-              <th>Artwork</th>
-              <th>Current Location</th>
-              ${isSuper || isEmp ? `<th>Condition Report</th>` : ""}
-            </tr>
-          </thead>
-          <tbody>${artworkStatusRows || '<tr><td colspan="3">No artwork status found.</td></tr>'}</tbody>
-        </table>
-      </section>
+        <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="staff-exhibitions">
+          <h2>Exhibition Guides and Staffing</h2>
+          <form method="get" action="/queries" class="form-grid">
+            <label>Search Exhibition
+              <select name="staff_exhibition">
+                <option value="">All Exhibitions</option>
+                ${allExhibitions.map((exhibition) => `
+                  <option value="${escapeHtml(exhibition.Exhibition_Name)}" ${staffExhibitionSearch === exhibition.Exhibition_Name ? "selected" : ""}>
+                    ${escapeHtml(exhibition.Exhibition_Name)}
+                  </option>
+                `).join("")}
+              </select>
+            </label>
+            <button class="button" type="submit">Find Guides</button>
+          </form>
+          <table>
+            <thead>
+              <tr>
+                <th>Exhibition</th>
+                <th>Staff Member</th>
+                ${isSuper || isEmp ? "<th>Role</th>" : ""}
+                <th>Date Available</th>
+                ${isSuper ? "<th>Specific Duty</th>" : ""}
+              </tr>
+            </thead>
+            <tbody>${staffExhibitionRows || `<tr><td colspan="${isSuper ? 5 : isEmp ? 4 : 3}">No assignments found for upcoming exhibitions.</td></tr>`}</tbody>
+          </table>
+        </section>
 
-      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="staff-exhibitions">
-        <h2>Exhibition Guides & Staffing</h2>
-        <form method="get" action="/queries" class="form-grid">
-          <label>Search Exhibition
-            <select name="staff_exhibition">
-              <option value="">All Exhibitions</option>
-              ${allExhibitions.map((exhibition) => `
-                <option value="${escapeHtml(exhibition.Exhibition_Name)}" ${staffExhibitionSearch === exhibition.Exhibition_Name ? "selected" : ""}>
-                  ${escapeHtml(exhibition.Exhibition_Name)}
-                </option>
-              `).join("")}
-            </select>
-          </label>
-          <button class="button" type="submit">Find Guides</button>
-        </form>
-        <table>
-          <thead>
-            <tr>
-              <th>Exhibition</th>
-              <th>Staff Member</th>
-              ${isSuper || isEmp ? `<th>Role</th>` : ""}
-              <th>Date Available</th>
-              ${isSuper ? `<th>Specific Duty</th>` : ""}
-            </tr>
-          </thead>
-          <tbody>${staffExhibitionRows || '<tr><td colspan="5">No assignments found for upcoming exhibitions.</td></tr>'}</tbody>
-        </table>
-      </section>
+        <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="artwork-search" id="artwork-search-panel">
+          <h2>Artwork Search</h2>
+          <form method="get" action="/queries" class="form-grid">
+            <label>Title
+              <input type="text" name="title" value="${escapeHtml(titleSearch ?? "")}">
+            </label>
+            <label>Artist Name
+              <input type="text" name="artist" value="${escapeHtml(artistSearch ?? "")}">
+            </label>
+            <label>Art Style
+              <select name="style">
+                <option value="">All Styles</option>
+                ${ART_STYLES.map((s) => `<option value="${escapeHtml(s)}" ${styleSearch === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
+              </select>
+            </label>
+            <label>Type
+              <select name="type">
+                <option value="">All Types</option>
+                ${ART_TYPES.map((t) => `<option value="${escapeHtml(t)}" ${typeSearch === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
+              </select>
+            </label>
+            <label>Time Period
+              <select name="period">
+                <option value="">All Periods</option>
+                ${ART_PERIODS.map((p) => `<option value="${escapeHtml(p)}" ${periodSearch === p ? "selected" : ""}>${escapeHtml(p)}</option>`).join("")}
+              </select>
+            </label>
+            <button class="button" type="submit">Search Artwork</button>
+          </form>
+          ${renderArtworkResults(artworkResults)}
+        </section>
 
-      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="artwork-search">
-        <h2>Finding Artwork</h2>
-        <form method="get" action="/queries" class="form-grid">
-          <label>Title
-            <input type="text" name="title" value="${escapeHtml(titleSearch ?? '')}">
-          </label>
-          <label>Artist Name
-            <input type="text" name="artist" value="${escapeHtml(artistSearch ?? '')}">
-          </label>
-          <label>Art Style
-            <select name="style">
-              <option value="">All Styles</option>
-              ${ART_STYLES.map((s) => `<option value="${escapeHtml(s)}" ${styleSearch === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
-            </select>
-          </label>
-          <label>Type
-            <select name="type">
-              <option value="">All Types</option>
-              ${ART_TYPES.map((t) => `<option value="${escapeHtml(t)}" ${typeSearch === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
-            </select>
-          </label>
-          <label>Time Period
-            <select name="period">
-              <option value="">All Periods</option>
-              ${ART_PERIODS.map((p) => `<option value="${escapeHtml(p)}" ${periodSearch === p ? "selected" : ""}>${escapeHtml(p)}</option>`).join("")}
-            </select>
-          </label>
-          <button class="button" type="submit">Search Artwork</button>
-        </form>
-        <table>
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Artist</th>
-              <th>Type</th>
-              <th>Style</th>
-              <th>Period</th>
-            </tr>
-          </thead>
-          <tbody>${artworkRows || '<tr><td colspan="5">No artwork matched the selected filters.</td></tr>'}</tbody>
-        </table>
-      </section>
+        <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="exhibition-dates" id="exhibition-panel">
+          <h2>Exhibitions by Date Range</h2>
+          <form method="get" action="/queries" class="form-grid">
+            <label>Start Date
+              <input type="date" name="start_date" value="${escapeHtml(startDate ?? "")}">
+            </label>
+            <label>End Date
+              <input type="date" name="end_date" value="${escapeHtml(endDate ?? "")}">
+            </label>
+            <button class="button" type="submit">View Exhibitions</button>
+          </form>
+          <table>
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Exhibition</th>
+                <th>Starts</th>
+                <th>Ends</th>
+              </tr>
+            </thead>
+            <tbody>${exhibitionRows || '<tr><td colspan="4">No exhibitions matched the selected dates.</td></tr>'}</tbody>
+          </table>
+        </section>
 
-      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="exhibition-dates">
-        <h2>Exhibitions by Date Range</h2>
-        <form method="get" action="/queries" class="form-grid">
-          <label>Start Date
-            <input type="date" name="start_date" value="${escapeHtml(startDate ?? '')}">
-          </label>
-          <label>End Date
-            <input type="date" name="end_date" value="${escapeHtml(endDate ?? '')}">
-          </label>
-          <button class="button" type="submit">Run Query</button>
-        </form>
-        <table>
-          <thead>
-            <tr>
-              <th>Exhibition</th>
-              <th>Starts</th>
-              <th>Ends</th>
-            </tr>
-          </thead>
-          <tbody>${exhibitionRows || '<tr><td colspan="3">No exhibitions matched the selected dates.</td></tr>'}</tbody>
-        </table>
-      </section>
+        <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="gift-inventory" id="gift-panel">
+          <h2>Gift Shop Inventory</h2>
+          <form method="get" action="/queries" class="form-grid">
+            <label>Category
+              <select name="category">
+                <option value="">All Categories</option>
+                ${giftCategories.map(c => `
+                  <option value="${escapeHtml(c.Category)}" ${categorySearch === c.Category ? "selected" : ""}>
+                    ${escapeHtml(c.Category)}
+                  </option>
+                `).join("")}
+              </select>
+            </label>
+            <label>Maximum Price
+              <input type="number" step="0.01" min="0" name="max_price" value="${escapeHtml(maxPrice ?? "")}">
+            </label>
+            <button class="button" type="submit">Search Item</button>
+          </form>
+          ${renderProductCards(inventoryResults, "giftshop")}
+        </section>
 
-      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="gift-inventory">
-        <h2>Gift Shop Inventory</h2>
-        <form method="get" action="/queries" class="form-grid">
-          <label>Category
-            <select name="category">
-              <option value="">All Categories</option>
-              ${giftCategories.map(c => `
-                <option value="${escapeHtml(c.Category)}" ${categorySearch === c.Category ? 'selected' : ''}>
-                  ${escapeHtml(c.Category)}
-                </option>
-              `).join("")}
-            </select>
-          </label>
-          <label>Maximum Price
-            <input type="number" step="0.01" min="0" name="max_price" value="${escapeHtml(maxPrice ?? '')}">
-          </label>
-          <button class="button" type="submit">Search Item</button>
-        </form>
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Category</th>
-              <th>Price</th>
-              <th>Stock</th>
-            </tr>
-          </thead>
-          <tbody>${inventoryRows || '<tr><td colspan="4">No inventory matched the selected filters.</td></tr>'}</tbody>
-        </table>
-      </section>
-
-      <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="cafe-inventory">
-        <h2>Café Inventory</h2>
-        <form method="get" action="/queries" class="form-grid">
-          <label>Item Type
-            <select name="cafe_type">
-              <option value="">All Types</option>
-              <option value="Food" ${cafeTypeSearch === 'Food' ? 'selected' : ''}>Food</option>
-              <option value="Drink" ${cafeTypeSearch === 'Drink' ? 'selected' : ''}>Drink</option>
-              <option value="Dessert" ${cafeTypeSearch === 'Dessert' ? 'selected' : ''}>Dessert</option>
-              <option value="Snack" ${cafeTypeSearch === 'Snack' ? 'selected' : ''}>Snack</option>
-            </select>
-          </label>
-          <button class="button" type="submit">Search Café</button>
-        </form>
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Type</th>
-              <th>Price</th>
-              <th>Stock</th>
-            </tr>
-          </thead>
-          <tbody>${cafeRows || '<tr><td colspan="4">No café items matched the selected filters.</td></tr>'}</tbody>
-        </table>
-      </section>
-    `,
+        <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="cafe-inventory">
+          <h2>Cafe Inventory</h2>
+          <form method="get" action="/queries" class="form-grid">
+            <label>Item Type
+              <select name="cafe_type">
+                <option value="">All Types</option>
+                <option value="Food" ${cafeTypeSearch === "Food" ? "selected" : ""}>Food</option>
+                <option value="Drink" ${cafeTypeSearch === "Drink" ? "selected" : ""}>Drink</option>
+                <option value="Dessert" ${cafeTypeSearch === "Dessert" ? "selected" : ""}>Dessert</option>
+                <option value="Snack" ${cafeTypeSearch === "Snack" ? "selected" : ""}>Snack</option>
+              </select>
+            </label>
+            <button class="button" type="submit">Search Cafe</button>
+          </form>
+          ${renderProductCards(cafeResults, "cafe")}
+        </section>
+      `,
     }));
   }));
 }
 
-module.exports = {registerQueriesRoutes}
+module.exports = { registerQueriesRoutes };

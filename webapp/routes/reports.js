@@ -15,6 +15,8 @@ function registerReportsRoutes(app, { pool }) {
   app.get("/reports", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const salesStart = req.query.sales_start?.trim() || null;
     const salesEnd = req.query.sales_end?.trim() || null;
+    const salesPurchaseType = req.query.sales_purchase_type?.trim() || null;
+    const salesMemberMode = req.query.sales_member_mode?.trim() || null;
     const department = req.query.department?.trim() || null;
     const revenueStart = req.query.revenue_start?.trim() || null;
     const revenueEnd = req.query.revenue_end?.trim() || null;
@@ -53,14 +55,45 @@ function registerReportsRoutes(app, { pool }) {
     );
 
     const [ticketSalesRows] = await pool.query(
-      `SELECT T.Visit_Date, TL.Ticket_Type, SUM(TL.Quantity) AS Tickets_Sold, SUM(TL.Total_sum_of_ticket) AS Revenue
+      `SELECT T.Visit_Date, T.Purchase_type, TL.Ticket_Type,
+              CASE WHEN T.Membership_ID IS NULL THEN 'Guest' ELSE 'Member' END AS Buyer_Type,
+              SUM(TL.Quantity) AS Tickets_Sold, SUM(TL.Total_sum_of_ticket) AS Revenue
        FROM Ticket T
        JOIN ticket_line TL ON TL.Ticket_ID = T.Ticket_ID
        WHERE (? IS NULL OR T.Purchase_Date >= ?)
          AND (? IS NULL OR T.Purchase_Date <= ?)
-       GROUP BY T.Visit_Date, TL.Ticket_Type
-       ORDER BY T.Visit_Date DESC, TL.Ticket_Type`,
-      [salesStart, salesStart, salesEnd, salesEnd],
+         AND (? IS NULL OR T.Purchase_type = ?)
+         AND (? IS NULL
+              OR (? = 'member' AND T.Membership_ID IS NOT NULL)
+              OR (? = 'guest' AND T.Membership_ID IS NULL))
+       GROUP BY T.Visit_Date, T.Purchase_type, TL.Ticket_Type, Buyer_Type
+       ORDER BY T.Visit_Date DESC, T.Purchase_type, TL.Ticket_Type`,
+      [
+        salesStart, salesStart,
+        salesEnd, salesEnd,
+        salesPurchaseType, salesPurchaseType,
+        salesMemberMode, salesMemberMode, salesMemberMode,
+      ],
+    );
+
+    const [[ticketSalesSummary]] = await pool.query(
+      `SELECT COALESCE(SUM(TL.Quantity), 0) AS Total_Tickets,
+              COALESCE(SUM(TL.Total_sum_of_ticket), 0) AS Total_Revenue,
+              COUNT(DISTINCT T.Ticket_ID) AS Total_Orders
+       FROM Ticket T
+       JOIN ticket_line TL ON TL.Ticket_ID = T.Ticket_ID
+       WHERE (? IS NULL OR T.Purchase_Date >= ?)
+         AND (? IS NULL OR T.Purchase_Date <= ?)
+         AND (? IS NULL OR T.Purchase_type = ?)
+         AND (? IS NULL
+              OR (? = 'member' AND T.Membership_ID IS NOT NULL)
+              OR (? = 'guest' AND T.Membership_ID IS NULL))`,
+      [
+        salesStart, salesStart,
+        salesEnd, salesEnd,
+        salesPurchaseType, salesPurchaseType,
+        salesMemberMode, salesMemberMode, salesMemberMode,
+      ]
     );
 
     const [employeeRows] = await pool.query(
@@ -311,6 +344,8 @@ function registerReportsRoutes(app, { pool }) {
     const ticketSalesHtml = ticketSalesPagination.items.map((row) => `
       <tr>
         <td>${formatDisplayDate(row.Visit_Date)}</td>
+        <td>${escapeHtml(row.Purchase_type || "N/A")}</td>
+        <td>${escapeHtml(row.Buyer_Type)}</td>
         <td>${escapeHtml(row.Ticket_Type)}</td>
         <td>${row.Tickets_Sold}</td>
         <td>$${Number(row.Revenue).toFixed(2)}</td>
@@ -542,18 +577,36 @@ function registerReportsRoutes(app, { pool }) {
           <label>Purchase End
             <input type="date" name="sales_end" value="${escapeHtml(salesEnd ?? '')}">
           </label>
+          <label>Purchase Type
+            <select name="sales_purchase_type">
+              <option value="">All Purchase Types</option>
+              <option value="In-Person" ${salesPurchaseType === "In-Person" ? "selected" : ""}>In-Person</option>
+              <option value="Walk-up" ${salesPurchaseType === "Walk-up" ? "selected" : ""}>Walk-up</option>
+              <option value="Online" ${salesPurchaseType === "Online" ? "selected" : ""}>Online</option>
+            </select>
+          </label>
+          <label>Buyer Type
+            <select name="sales_member_mode">
+              <option value="">Members and Guests</option>
+              <option value="member" ${salesMemberMode === "member" ? "selected" : ""}>Members Only</option>
+              <option value="guest" ${salesMemberMode === "guest" ? "selected" : ""}>Guests Only</option>
+            </select>
+          </label>
           <button class="button" type="submit">Run Report</button>
         </form>
+        <p class="dashboard-note">Orders: ${ticketSalesSummary.Total_Orders || 0} | Tickets sold: ${ticketSalesSummary.Total_Tickets || 0} | Revenue: $${Number(ticketSalesSummary.Total_Revenue || 0).toFixed(2)}</p>
         <table>
           <thead>
             <tr>
               <th>Visit Date</th>
+              <th>Purchase Type</th>
+              <th>Buyer Type</th>
               <th>Ticket Type</th>
               <th>Tickets Sold</th>
               <th>Revenue</th>
             </tr>
           </thead>
-          <tbody>${ticketSalesHtml || '<tr><td colspan="4">No ticket sales matched the selected dates.</td></tr>'}</tbody>
+          <tbody>${ticketSalesHtml || '<tr><td colspan="6">No ticket sales matched the selected filters.</td></tr>'}</tbody>
         </table>
         ${renderPager(req, "ticket_sales_page", ticketSalesPagination, "ticket-sales-report")}
       </section>

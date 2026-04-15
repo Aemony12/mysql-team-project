@@ -3,6 +3,7 @@ const {
   escapeHtml,
   formatDateInput,
   formatDisplayDate,
+  getGiftShopAsset,
   renderFlash,
   renderPage,
   requireLogin,
@@ -112,10 +113,22 @@ function registerGiftShopRoutes(app, { pool }) {
   app.post("/add-item", requireLogin, allowRoles(["giftshop", "supervisor"]), asyncHandler(async (req, res) => {
     const itemId = req.body.item_id || null;
     const { name, price, stock } = req.body;
+    const parsedPrice = Number.parseFloat(price);
+    const parsedStock = Number.parseInt(stock, 10);
 
     if (!name || !price || !stock) {
       setFlash(req, "All fields are required.");
       return res.redirect("/add-item");
+    }
+
+    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+      setFlash(req, "Price must be 0 or greater.");
+      return res.redirect(itemId ? `/add-item?edit_id=${itemId}` : "/add-item");
+    }
+
+    if (!Number.isInteger(parsedStock) || parsedStock < 0) {
+      setFlash(req, "Stock cannot be negative.");
+      return res.redirect(itemId ? `/add-item?edit_id=${itemId}` : "/add-item");
     }
 
     if (itemId) {
@@ -123,14 +136,14 @@ function registerGiftShopRoutes(app, { pool }) {
         `UPDATE Gift_Shop_Item
         SET Name_of_Item = ?, Price_of_Item = ?, Stock_Quantity = ?
         WHERE Gift_Shop_Item_ID = ?`,
-        [name, price, stock, itemId],
+        [name, parsedPrice, parsedStock, itemId],
       );
       setFlash(req, "Item updated.");
   } else {
     await pool.query(
       `INSERT INTO Gift_Shop_Item (Name_of_Item, Price_of_Item, Stock_Quantity)
        VALUES (?, ?, ?)`,
-      [name, price, stock],
+      [name, parsedPrice, parsedStock],
     );
 
     setFlash(req, "Item added.");
@@ -151,7 +164,7 @@ function registerGiftShopRoutes(app, { pool }) {
       await pool.query("DELETE FROM Gift_Shop_Item WHERE Gift_Shop_Item_ID = ?", [idToDelete]);
       setFlash(req, "Item removed.");
     } catch (err) {
-      if (err.code === "ER_ROW_IS_REFERENCED_2") {
+      if (err.code === "ER_ROW_IS_REFERENCED_2" || err.code === "ER_ROW_IS_REFERENCED") {
         setFlash(req, "Cannot delete: this item has existing sale records.");
       } else {
         throw err;
@@ -474,71 +487,61 @@ function registerGiftShopRoutes(app, { pool }) {
     const cart = req.session.giftCart || [];
     const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
 
-    const menuRows = items.map(item => {
-      const stockLabel = item.Stock_Quantity === 0
-        ? '<span style="color:#c0392b;font-size:0.85rem;">Out of Stock</span>'
-        : item.Stock_Quantity <= 5
-          ? `<span style="color:#e67e22;font-size:0.85rem;">${item.Stock_Quantity} left</span>`
-          : `<span style="color:#27ae60;font-size:0.85rem;">In Stock</span>`;
-      return `
-        <tr>
-          <td>${escapeHtml(item.Name_of_Item)}</td>
-          <td>$${Number(item.Price_of_Item).toFixed(2)}</td>
-          <td>${stockLabel}</td>
-          <td>${item.Stock_Quantity > 0
-            ? `<form method="post" action="/gift-order/add-item" class="inline-form">
-                <input type="hidden" name="item_id" value="${item.Gift_Shop_Item_ID}">
-                <input type="number" name="quantity" value="1" min="1" max="${item.Stock_Quantity}" style="width:5.5rem;margin-right:0.5rem;">
-                <button class="button" type="submit" style="padding:0.3rem 0.8rem;">Add</button>
-               </form>`
-            : '<span style="color:#aaa;">Unavailable</span>'
-          }</td>
-        </tr>`;
-    }).join('');
-
-    const cartRows = cart.map(item => `
-      <tr>
-        <td>${escapeHtml(item.name)}</td>
-        <td>$${Number(item.price).toFixed(2)}</td>
-        <td>${item.qty}</td>
-        <td>$${(item.price * item.qty).toFixed(2)}</td>
-        <td>
-        <form method="post" action="/gift-order/update-item" class="inline-form">
-          <input type="hidden" name="item_id" value="${item.id}">
-          <input type="number" name="quantity" value="${item.qty}" min="1" style="width:4rem;">
-          <button class="link-button" type="submit">Edit</button>
-        </form>
-          <form method="post" action="/gift-order/remove-item" class="inline-form">
-            <input type="hidden" name="item_id" value="${item.id}">
-            <button class="link-button danger" type="submit">Remove</button>
-          </form>
-        </td>
-      </tr>`).join('');
-
     res.send(renderPage({
       title: "New Gift Shop Order",
       user: req.session.user,
+      currentPath: req.path,
+      hero: {
+        eyebrow: "Gift Shop",
+        title: "Build a customer order from the shop floor",
+        description: "Products now appear as retail cards with placeholder imagery, stock badges, and visible cart controls.",
+        imagePath: "/images/giftshop-placeholder.svg",
+        alt: "Gift shop ordering workspace.",
+      },
       content: `
       <section class="card narrow">
-        <h1>New Gift Shop Order</h1>
+        <p class="eyebrow">Retail Floor</p>
+        <h2>Shop inventory</h2>
         ${renderFlash(req)}
-        <h2>Items</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Price</th>
-              <th>Stock</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>${menuRows || '<tr><td colspan="4">No items available.</td></tr>'}</tbody>
-        </table>
+        <div class="product-grid">
+          ${items.map((item) => {
+            const asset = getGiftShopAsset(item.Name_of_Item, item.Category);
+            const tone = item.Stock_Quantity === 0 ? "danger" : item.Stock_Quantity <= 5 ? "warning" : "success";
+            return `
+              <article class="product-card">
+                <div class="product-card__media"><img src="${asset.imagePath}" alt="${asset.alt}"></div>
+                <div class="product-card__body">
+                  <p class="eyebrow">Gift Shop</p>
+                  <h2>${escapeHtml(item.Name_of_Item)}</h2>
+                  <div class="product-card__meta">
+                    <span class="status-badge status-badge--neutral">$${Number(item.Price_of_Item).toFixed(2)}</span>
+                    <span class="status-badge status-badge--${tone}">${item.Stock_Quantity} in stock</span>
+                  </div>
+                  ${item.Stock_Quantity > 0
+                    ? `<form method="post" action="/gift-order/add-item" class="form-grid">
+                        <input type="hidden" name="item_id" value="${item.Gift_Shop_Item_ID}">
+                        <label>Quantity
+                          <input type="number" name="quantity" value="1" min="1" max="${item.Stock_Quantity}">
+                        </label>
+                        <button class="button" type="submit">Add to Cart</button>
+                      </form>`
+                    : '<p class="section-lead">Unavailable for new orders.</p>'}
+                </div>
+              </article>
+            `;
+          }).join("")}
+        </div>
       </section>
       <section class="card narrow">
-        <h2>Cart</h2>
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Cart</p>
+            <h2>Current order</h2>
+          </div>
+          <span class="status-badge status-badge--neutral">$${cartTotal.toFixed(2)}</span>
+        </div>
         ${cart.length === 0
-          ? '<p style="color:#888;">No items in cart yet.</p>'
+          ? '<div class="empty-state"><p>No items in cart yet.</p></div>'
           : `<table>
               <thead>
                 <tr>
@@ -549,10 +552,27 @@ function registerGiftShopRoutes(app, { pool }) {
                   <th></th>
                 </tr>
               </thead>
-              <tbody>${cartRows}</tbody>
+              <tbody>${cart.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.name)}</td>
+                  <td>$${Number(item.price).toFixed(2)}</td>
+                  <td>${item.qty}</td>
+                  <td>$${(item.price * item.qty).toFixed(2)}</td>
+                  <td>
+                    <form method="post" action="/gift-order/update-item" class="inline-form">
+                      <input type="hidden" name="item_id" value="${item.id}">
+                      <input type="number" name="quantity" value="${item.qty}" min="1" style="width:4rem;">
+                      <button class="link-button" type="submit">Edit</button>
+                    </form>
+                    <form method="post" action="/gift-order/remove-item" class="inline-form">
+                      <input type="hidden" name="item_id" value="${item.id}">
+                      <button class="link-button danger" type="submit">Remove</button>
+                    </form>
+                  </td>
+                </tr>`).join("")}</tbody>
               <tfoot><tr><td colspan="3" style="text-align:right;font-weight:bold;">Total</td><td><strong>$${cartTotal.toFixed(2)}</strong></td><td></td></tr></tfoot>
              </table>
-             <div style="display:flex;gap:1rem;margin-top:1rem;">
+             <div class="button-row">
                <a class="button" href="/gift-order/checkout">Checkout</a>
                <form method="post" action="/gift-order/clear">
                  <button class="button button-secondary" type="submit">Clear Cart</button>
@@ -585,8 +605,10 @@ function registerGiftShopRoutes(app, { pool }) {
     res.send(renderPage({
       title: "Gift Shop Checkout",
       user: req.session.user,
+      currentPath: req.path,
       content: `
       <section class="card narrow">
+        <p class="eyebrow">Gift Shop Checkout</p>
         <h1>Order Summary</h1>
         ${renderFlash(req)}
         <table>
@@ -601,7 +623,7 @@ function registerGiftShopRoutes(app, { pool }) {
           <tbody>${itemRows}</tbody>
           <tfoot><tr><td colspan="3" style="text-align:right;font-weight:bold;">Total</td><td><strong>$${total.toFixed(2)}</strong></td></tr></tfoot>
         </table>
-        <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+        <div class="button-row">
           <form method="post" action="/gift-order/checkout">
             <button class="button" type="submit">Confirm Order</button>
           </form>
@@ -650,7 +672,7 @@ function registerGiftShopRoutes(app, { pool }) {
     req.session.giftCart = (req.session.giftCart || []).filter(i => i.id != req.body.item_id);
     res.redirect("/gift-order");
   }));
-    app.post("/gift-order/update-item", requireLogin, allowRoles(["giftshop", "supervisor", "employee"]), asyncHandler(async (req, res) => {
+  app.post("/gift-order/update-item", requireLogin, allowRoles(["giftshop", "supervisor", "employee"]), asyncHandler(async (req, res) => {
       const { item_id, quantity } = req.body;
       const qty = Number.parseInt(quantity, 10);
 
@@ -664,6 +686,14 @@ function registerGiftShopRoutes(app, { pool }) {
       const item = req.session.giftCart.find(i => i.id == item_id);
 
       if (item) {
+        const [[stockRow]] = await pool.query(
+          "SELECT Stock_Quantity, Name_of_Item FROM Gift_Shop_Item WHERE Gift_Shop_Item_ID = ?",
+          [item_id]
+        );
+        if (!stockRow || qty > stockRow.Stock_Quantity) {
+          setFlash(req, `Only ${stockRow?.Stock_Quantity ?? 0} units available for "${stockRow?.Name_of_Item || "item"}".`);
+          return res.redirect("/gift-order");
+        }
         item.qty = qty;
       }
 
