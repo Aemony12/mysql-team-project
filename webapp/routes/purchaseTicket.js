@@ -105,6 +105,16 @@ function registerPurchaseTicketRoutes(app, { pool }) {
         ? { type: "success", title: "Member discount ready", message: "Your active membership applies a 20% discount automatically." }
         : { type: "warning", title: "Membership attention", message: "Your membership is not active. Renew to unlock member pricing for admission." },
       content: `
+        ${membershipInfo && membershipInfo.Status !== "Active" && membershipInfo.Status !== "Cancelled" ? `
+          <section class="card">
+            <p class="eyebrow">Membership Renewal</p>
+            <h2>Renew to unlock member pricing</h2>
+            <p class="section-lead">Your membership is currently ${escapeHtml(membershipInfo.Status.toLowerCase())}. Renew here before purchasing admission if you want the member discount applied.</p>
+            <form method="post" action="/member-renew-membership">
+              <button class="button" type="submit">Renew Membership</button>
+            </form>
+          </section>
+        ` : ""}
         <section class="card">
           <div class="section-header">
             <div>

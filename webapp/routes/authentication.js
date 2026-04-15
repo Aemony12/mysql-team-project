@@ -1,6 +1,7 @@
 const {
   getExhibitionAsset,
   getRoleAsset,
+  renderCarousel,
   renderFlash,
   renderPage,
   setFlash,
@@ -108,6 +109,39 @@ function registerAuthenticationRoutes(app, { pool }) {
         },
       ],
       content: `
+        ${renderCarousel({
+          title: "Move through the site with clearer next steps",
+          description: "This carousel adds a guided path without changing the existing museum-style layout.",
+          slides: [
+            {
+              eyebrow: "Visit",
+              title: "Buy admission and check membership status",
+              description: "Start with tickets, then renew membership directly from the visit planning page if pricing is locked.",
+              href: req.session.user ? "/purchase-ticket" : "/member-login",
+              linkLabel: "Open Visit Planning",
+              imagePath: "/images/summer-showcase.jpg",
+              alt: "Visitors approaching a museum experience.",
+            },
+            {
+              eyebrow: "Art",
+              title: "Open the artwork status view first",
+              description: "Collection browsing now lands on the artwork status tab instead of a generic wall of search tools.",
+              href: req.session.user ? "/queries?view=artwork-status#query-tabs" : "/member-login",
+              linkLabel: "View Artwork",
+              imagePath: "/images/the-farnese-hours.jpg",
+              alt: "Collection artwork and exhibition materials.",
+            },
+            {
+              eyebrow: "Operations",
+              title: "Reach the right workspace by role",
+              description: "Supervisors, curators, admissions, retail, and cafe staff all keep their existing routes but with clearer entry points.",
+              href: "/staff-login",
+              linkLabel: "Open Staff Login",
+              imagePath: "/images/spring-exhibition-opening-gala.jpg",
+              alt: "Museum staff and event operations.",
+            },
+          ],
+        })}
         <section class="card">
           <div class="section-header">
             <div>
@@ -143,14 +177,18 @@ function registerAuthenticationRoutes(app, { pool }) {
   app.get("/login", (req, res) => res.redirect("/staff-login"));
 
   app.get("/staff-login", (req, res) => {
+    if (req.session.user) {
+      return res.redirect("/dashboard");
+    }
+
     res.send(renderLoginPage({
       req,
       title: "Staff Login",
       eyebrow: "Staff Access",
       heading: "Staff Login",
-      intro: "Use employee, admissions, retail, cafe, curator, or supervisor credentials to reach your operational workspace.",
-      action: "Enter Staff Portal",
-      secondaryLink: '<a class="button button-secondary" href="/member-login">Member Login</a>',
+      intro: "Use staff credentials to enter admissions, retail, cafe, curatorial, or supervisor workspaces.",
+      action: "Sign In",
+      secondaryLink: '<a class="button button-secondary" href="/">Back to Home</a>',
       hiddenAudience: "staff",
       mediaTitle: "Distinct workspaces for each museum role.",
       mediaCopy: "Admissions focuses on tickets, gift shop on products, cafe on orders, and supervisors on alerts and oversight. The entry point should make that obvious.",
@@ -159,6 +197,10 @@ function registerAuthenticationRoutes(app, { pool }) {
   });
 
   app.get("/member-login", (req, res) => {
+    if (req.session.user) {
+      return res.redirect("/dashboard");
+    }
+
     res.send(renderLoginPage({
       req,
       title: "Member Login",
@@ -177,6 +219,10 @@ function registerAuthenticationRoutes(app, { pool }) {
   app.get("/signup", (req, res) => res.redirect("/member-signup"));
 
   app.get("/member-signup", (req, res) => {
+    if (req.session.user) {
+      return res.redirect("/dashboard");
+    }
+
     res.send(renderPage({
       title: "Member Sign Up",
       user: req.session.user,

@@ -43,11 +43,44 @@ function renderProfile(user) {
   `;
 }
 
+function renderWorkspaceSections(sections) {
+  return `
+    <section class="card dashboard-card">
+      <p class="eyebrow">Operations Index</p>
+      <h2>Supervisor workspaces</h2>
+      <div class="workspace-sections">
+        ${sections.map((section) => `
+          <div class="workspace-section">
+            <h3>${section.title}</h3>
+            <div class="workspace-links">
+              ${section.links.map((link) => `<a class="button ${link.secondary ? "button-secondary" : ""}" href="${link.href}">${link.label}</a>`).join("")}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
 function registerDashboardRoutes(app, { pool }) {
   app.get("/dashboard", requireLogin, asyncHandler(async (req, res) => {
     const user = req.session.user;
 
     if (!isEmployee(user) && !isSupervisor(user) && !isCurator(user)) {
+      const membershipId = user.membershipId ?? null;
+      let membershipInfo = null;
+
+      if (membershipId) {
+        const [[memberRow]] = await pool.query(
+          "SELECT Status, Date_Exited FROM Membership WHERE Membership_ID = ?",
+          [membershipId],
+        );
+        membershipInfo = memberRow || null;
+      }
+
+      const memberStatus = membershipInfo?.Status || "No membership on file";
+      const needsRenewal = membershipInfo && membershipInfo.Status !== "Active" && membershipInfo.Status !== "Cancelled";
+
       return res.send(renderPage({
         title: "Member Overview",
         user,
@@ -60,14 +93,15 @@ function registerDashboardRoutes(app, { pool }) {
           alt: getRoleAsset("user").alt,
           actions: [
             { href: "/purchase-ticket", label: "Buy Tickets" },
-            { href: "/queries", label: "Explore Art", secondary: true },
+            { href: needsRenewal ? "/purchase-ticket" : "/queries?view=artwork-status#query-tabs", label: needsRenewal ? "Renew Membership" : "Explore Art", secondary: true },
           ],
         },
         featureCards: [
           { eyebrow: "Visit", title: "Admission Tickets", description: "Purchase admission and review recent ticket activity.", href: "/purchase-ticket", linkLabel: "Open Tickets", imagePath: "/images/summer-showcase.jpg", alt: "Museum admissions area." },
+          { eyebrow: "Membership", title: "Renew Membership", description: needsRenewal ? `Your membership is ${memberStatus.toLowerCase()}. Renew here to unlock member pricing again.` : "Review your membership status and renew early before benefits lapse.", href: "/purchase-ticket", linkLabel: needsRenewal ? "Renew Now" : "Check Status", imagePath: "/images/spring-collection.jpg", alt: "Museum member services area." },
           { eyebrow: "Tours", title: "Guided Tours", description: "Browse guided tours with clearer availability and exhibition context.", href: "/tour-register", linkLabel: "Browse Tours", imagePath: "/images/spring-collection.jpg", alt: "Museum tour visitors." },
           { eyebrow: "Events", title: "Museum Programs", description: "Register for upcoming events with obvious member and ticket requirements.", href: "/event-register", linkLabel: "View Events", imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Museum event." },
-          { eyebrow: "Art", title: "Collection Search", description: "Explore artworks, exhibitions, and collection information in a more gallery-like search page.", href: "/queries", linkLabel: "Search Collection", imagePath: "/images/the-farnese-hours.jpg", alt: "Illuminated manuscript artwork." },
+          { eyebrow: "Art", title: "Collection Search", description: "Explore artworks, exhibitions, and collection information in a more gallery-like search page.", href: "/queries?view=artwork-status#query-tabs", linkLabel: "View Artwork", imagePath: "/images/the-farnese-hours.jpg", alt: "Illuminated manuscript artwork." },
         ],
         content: `
           <section class="card dashboard-card">
@@ -75,6 +109,16 @@ function registerDashboardRoutes(app, { pool }) {
             <h2>Visit overview</h2>
             <p class="dashboard-intro">A first-time visitor should be able to tell what to do next without reading a wall of text.</p>
             ${renderProfile(user)}
+            <div class="summary-grid">
+              <article class="summary-card">
+                <p class="eyebrow">Membership Status</p>
+                <strong class="status-badge status-badge--${membershipInfo?.Status === "Active" ? "success" : membershipInfo ? "warning" : "danger"}">${escapeHtml(memberStatus)}</strong>
+              </article>
+              <article class="summary-card">
+                <p class="eyebrow">Next Step</p>
+                <strong>${needsRenewal ? "Renew to unlock member pricing" : "Tickets, tours, and events are ready."}</strong>
+              </article>
+            </div>
             ${renderFlash(req)}
           </section>
         `,
@@ -233,6 +277,64 @@ function registerDashboardRoutes(app, { pool }) {
     }
 
     const urgentCount = notifications.length + triggerViolations.length;
+    const supervisorSections = [
+      {
+        title: "Ticket Sales & Front Desk",
+        links: [
+          { href: "/sell-ticket", label: "Admissions Desk" },
+          { href: "/add-membership", label: "Visitor Memberships", secondary: true },
+          { href: "/add-ticket", label: "Ticket Records", secondary: true },
+        ],
+      },
+      {
+        title: "Collections Management",
+        links: [
+          { href: "/add-artist", label: "Manage Artists" },
+          { href: "/add-artwork", label: "Manage Artworks" },
+          { href: "/add-exhibition", label: "Manage Exhibitions" },
+          { href: "/add-exhibition-artwork", label: "Assign Artwork to Exhibitions", secondary: true },
+        ],
+      },
+      {
+        title: "Conservation & Loans",
+        links: [
+          { href: "/condition-reports", label: "Condition Reports" },
+          { href: "/artwork-loans", label: "Artwork Loans" },
+          { href: "/institutions", label: "Manage Institutions", secondary: true },
+        ],
+      },
+      {
+        title: "Guided Tours",
+        links: [
+          { href: "/tours", label: "Guided Tours" },
+          { href: "/add-schedule", label: "Schedule Tours", secondary: true },
+        ],
+      },
+      {
+        title: "Staff & Scheduling",
+        links: [
+          { href: "/add-employee", label: "Manage Staff" },
+          { href: "/add-department", label: "Manage Departments" },
+          { href: "/add-schedule", label: "Manage Schedules", secondary: true },
+        ],
+      },
+      {
+        title: "Events",
+        links: [
+          { href: "/add-event", label: "Manage Events" },
+          { href: "/add-event-registration", label: "Event Registrations", secondary: true },
+        ],
+      },
+      {
+        title: "Inventory & Reporting",
+        links: [
+          { href: "/reports", label: "Reports" },
+          { href: "/add-item", label: "Gift Shop Inventory", secondary: true },
+          { href: "/add-food", label: "Cafe Inventory", secondary: true },
+          { href: "/queries?view=artwork-status#query-tabs", label: "Search the Collection", secondary: true },
+        ],
+      },
+    ];
     const notificationsHtml = notifications.length > 0
       ? `
         <section class="card dashboard-card">
@@ -339,6 +441,7 @@ function registerDashboardRoutes(app, { pool }) {
         </section>
         ${notificationsHtml}
         ${triggerViolationsHtml}
+        ${renderWorkspaceSections(supervisorSections)}
         ${renderActionCards([
           { eyebrow: "Reports", title: "Management Reports", description: "Review ticketing, revenue, memberships, and operations through tabbed reporting views.", href: "/reports", linkLabel: "Open Reports", imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Operations report context." },
           { eyebrow: "Tours", title: "Guided Tour Scheduling", description: "Schedule tours, review roster details, and manage guide assignments.", href: "/tours", linkLabel: "Manage Tours", imagePath: "/images/spring-collection.jpg", alt: "Guided tour planning." },

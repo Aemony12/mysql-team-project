@@ -249,6 +249,7 @@ function registerQueriesRoutes(app, { pool }) {
        LIMIT 50`,
       cafeFilterParams,
     );
+    const canViewStaffing = isSuper || isEmp;
 
     const artworkStatusRows = artworkStatusResults.map((row) => {
       const asset = getArtworkAsset(row.Title, row.Type);
@@ -296,15 +297,15 @@ function registerQueriesRoutes(app, { pool }) {
         alt: "Museum collection artwork.",
       },
       featureCards: [
-        { eyebrow: "Collections", title: "Artwork Search", description: "Find works by title, artist, style, type, and period.", href: "#artwork-search-panel", linkLabel: "Search Artwork", imagePath: "/images/allegory.jpg", alt: "Artwork search card." },
-        { eyebrow: "Exhibitions", title: "Current and Upcoming", description: "Review exhibition timing and collection placement.", href: "#exhibition-panel", linkLabel: "View Exhibitions", imagePath: "/images/spring-collection.jpg", alt: "Exhibition card." },
-        { eyebrow: "Operations", title: "Gift Shop and Cafe", description: "Search retail and cafe inventory through the same top-level museum tools.", href: "#gift-panel", linkLabel: "Browse Inventory", imagePath: "/images/giftshop-placeholder.svg", alt: "Inventory card." },
+        { eyebrow: "Collections", title: "Artwork Search", description: "Find works by title, artist, style, type, and period.", href: "/queries?view=artwork-status#query-tabs", linkLabel: "View Artwork", imagePath: "/images/allegory.jpg", alt: "Artwork search card." },
+        { eyebrow: "Exhibitions", title: "Current and Upcoming", description: "Review exhibition timing and collection placement.", href: "/queries?view=exhibition-dates#query-tabs", linkLabel: "View Exhibitions", imagePath: "/images/spring-collection.jpg", alt: "Exhibition card." },
+        { eyebrow: "Operations", title: "Gift Shop and Cafe", description: "Search retail and cafe inventory through the same top-level museum tools.", href: "/queries?view=gift-inventory#query-tabs", linkLabel: "Browse Inventory", imagePath: "/images/giftshop-placeholder.svg", alt: "Inventory card." },
       ],
       content: `
-        <section class="card narrow">
+        <section class="card narrow" id="query-tabs">
           <div class="tab-bar" data-tab-group="queries">
             <button class="tab-button" type="button" data-tab-target="artwork-status">Artwork Status</button>
-            <button class="tab-button" type="button" data-tab-target="staff-exhibitions">Staffing</button>
+            ${canViewStaffing ? '<button class="tab-button" type="button" data-tab-target="staff-exhibitions">Staffing</button>' : ""}
             <button class="tab-button" type="button" data-tab-target="artwork-search">Artwork Search</button>
             <button class="tab-button" type="button" data-tab-target="exhibition-dates">Exhibitions</button>
             <button class="tab-button" type="button" data-tab-target="gift-inventory">Gift Shop</button>
@@ -351,6 +352,7 @@ function registerQueriesRoutes(app, { pool }) {
           </table>
         </section>
 
+        ${canViewStaffing ? `
         <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="staff-exhibitions">
           <h2>Exhibition Guides and Staffing</h2>
           <form method="get" action="/queries" class="form-grid">
@@ -379,6 +381,7 @@ function registerQueriesRoutes(app, { pool }) {
             <tbody>${staffExhibitionRows || `<tr><td colspan="${isSuper ? 5 : isEmp ? 4 : 3}">No assignments found for upcoming exhibitions.</td></tr>`}</tbody>
           </table>
         </section>
+        ` : ""}
 
         <section class="card narrow tab-panel" data-tab-group="queries" data-tab-panel="artwork-search" id="artwork-search-panel">
           <h2>Artwork Search</h2>

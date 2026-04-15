@@ -330,6 +330,7 @@ function renderHero(hero) {
         <video autoplay muted loop playsinline poster="${escapeHtml(hero.posterPath || hero.imagePath || PLACEHOLDER_ASSETS.visit)}">
           <source src="${escapeHtml(hero.videoPath)}" type="video/mp4">
         </video>
+        <button class="hero-media-toggle" type="button" data-hero-video-toggle aria-pressed="false" aria-label="Pause background video">Pause motion</button>
       </div>
     `
     : `
@@ -391,6 +392,46 @@ function renderFeatureCards(cards) {
           </div>
         </article>
       `).join("")}
+    </section>
+  `;
+}
+
+function renderCarousel({ title, description = "", slides = [] }) {
+  if (!slides.length) {
+    return "";
+  }
+
+  return `
+    <section class="card carousel-shell reveal" aria-label="${escapeHtml(title)}">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Featured Pathways</p>
+          <h2>${escapeHtml(title)}</h2>
+        </div>
+        ${description ? `<p class="carousel-shell__lead">${escapeHtml(description)}</p>` : ""}
+      </div>
+      <div class="carousel" data-carousel>
+        <div class="carousel__viewport">
+          ${slides.map((slide, index) => `
+            <article class="carousel__slide ${index === 0 ? "is-active" : ""}" data-carousel-slide ${index === 0 ? "" : "hidden"}>
+              <div class="carousel__media">
+                <img src="${escapeHtml(slide.imagePath || PLACEHOLDER_ASSETS.visit)}" alt="${escapeHtml(slide.alt || slide.title)}">
+              </div>
+              <div class="carousel__body">
+                ${slide.eyebrow ? `<p class="eyebrow">${escapeHtml(slide.eyebrow)}</p>` : ""}
+                <h3>${escapeHtml(slide.title)}</h3>
+                <p>${escapeHtml(slide.description || "")}</p>
+                ${slide.href ? `<a class="button" href="${escapeHtml(slide.href)}">${escapeHtml(slide.linkLabel || "Open")}</a>` : ""}
+              </div>
+            </article>
+          `).join("")}
+        </div>
+        <div class="carousel__controls">
+          <button class="button button-secondary button-small" type="button" data-carousel-prev aria-label="Show previous slide">Previous</button>
+          <div class="carousel__status" data-carousel-status aria-live="polite">1 of ${slides.length}</div>
+          <button class="button button-secondary button-small" type="button" data-carousel-next aria-label="Show next slide">Next</button>
+        </div>
+      </div>
     </section>
   `;
 }
@@ -656,6 +697,7 @@ module.exports = {
   getRoleAsset,
   getGiftShopAsset,
   getCafeAsset,
+  renderCarousel,
   requireLogin,
   setFlash,
   allowRoles,

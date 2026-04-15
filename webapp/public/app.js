@@ -121,7 +121,78 @@
     });
   };
 
+  const initCarousel = () => {
+    const carousels = document.querySelectorAll("[data-carousel]");
+
+    carousels.forEach((carousel) => {
+      const slides = Array.from(carousel.querySelectorAll("[data-carousel-slide]"));
+      const status = carousel.querySelector("[data-carousel-status]");
+      const prev = carousel.querySelector("[data-carousel-prev]");
+      const next = carousel.querySelector("[data-carousel-next]");
+      let activeIndex = slides.findIndex((slide) => !slide.hidden);
+
+      if (!slides.length) {
+        return;
+      }
+
+      if (activeIndex < 0) {
+        activeIndex = 0;
+      }
+
+      const setActiveSlide = (nextIndex) => {
+        activeIndex = (nextIndex + slides.length) % slides.length;
+
+        slides.forEach((slide, index) => {
+          const isActive = index === activeIndex;
+          slide.hidden = !isActive;
+          slide.classList.toggle("is-active", isActive);
+        });
+
+        if (status) {
+          status.textContent = `${activeIndex + 1} of ${slides.length}`;
+        }
+      };
+
+      prev?.addEventListener("click", () => setActiveSlide(activeIndex - 1));
+      next?.addEventListener("click", () => setActiveSlide(activeIndex + 1));
+      setActiveSlide(activeIndex);
+    });
+  };
+
+  const initHeroVideoToggle = () => {
+    const toggle = document.querySelector("[data-hero-video-toggle]");
+    const video = document.querySelector(".video-hero video");
+
+    if (!toggle || !video) {
+      return;
+    }
+
+    const syncState = () => {
+      const paused = video.paused;
+      toggle.setAttribute("aria-pressed", paused ? "true" : "false");
+      toggle.setAttribute("aria-label", paused ? "Play background video" : "Pause background video");
+      toggle.textContent = paused ? "Play motion" : "Pause motion";
+    };
+
+    if (reduceMotion.matches) {
+      video.pause();
+    }
+
+    toggle.addEventListener("click", () => {
+      if (video.paused) {
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+      syncState();
+    });
+
+    syncState();
+  };
+
   initTabs();
+  initCarousel();
+  initHeroVideoToggle();
 
   if (reduceMotion.matches) {
     document.documentElement.classList.add("reduce-motion");
