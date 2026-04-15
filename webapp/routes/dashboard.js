@@ -1,6 +1,9 @@
 const {
   asyncHandler,
   escapeHtml,
+  getExhibitionAsset,
+  getGiftShopAsset,
+  getRoleAsset,
   isEmployee,
   isSupervisor,
   renderFlash,
@@ -12,216 +15,201 @@ const {
   isCurator,
 } = require("../helpers");
 
+function renderActionCards(cards) {
+  return `
+    <div class="feature-grid">
+      ${cards.map((card) => `
+        <article class="feature-card">
+          <div class="feature-card__media"><img src="${card.imagePath}" alt="${card.alt}"></div>
+          <div class="feature-card__body">
+            <p class="eyebrow">${card.eyebrow}</p>
+            <h2>${card.title}</h2>
+            <p>${card.description}</p>
+            <a class="feature-card__link" href="${card.href}">${card.linkLabel}</a>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderProfile(user) {
+  return `
+    <dl class="dashboard-details">
+      <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
+      <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
+      <div class="detail-item"><dt>Role</dt><dd>${escapeHtml(user.role)}</dd></div>
+    </dl>
+  `;
+}
+
 function registerDashboardRoutes(app, { pool }) {
   app.get("/dashboard", requireLogin, asyncHandler(async (req, res) => {
     const user = req.session.user;
+
     if (!isEmployee(user) && !isSupervisor(user) && !isCurator(user)) {
       return res.send(renderPage({
-        title: "Member Dashboard",
+        title: "Member Overview",
         user,
+        currentPath: req.path,
+        hero: {
+          eyebrow: "Member Portal",
+          title: `Welcome, ${escapeHtml(user.name.split(" ")[0])}`,
+          description: "Plan your museum visit with tickets, guided tours, events, and collection browsing in one clear place.",
+          imagePath: getRoleAsset("user").imagePath,
+          alt: getRoleAsset("user").alt,
+          actions: [
+            { href: "/purchase-ticket", label: "Buy Tickets" },
+            { href: "/queries", label: "Explore Art", secondary: true },
+          ],
+        },
+        featureCards: [
+          { eyebrow: "Visit", title: "Admission Tickets", description: "Purchase admission and review recent ticket activity.", href: "/purchase-ticket", linkLabel: "Open Tickets", imagePath: "/images/summer-showcase.jpg", alt: "Museum admissions area." },
+          { eyebrow: "Tours", title: "Guided Tours", description: "Browse guided tours with clearer availability and exhibition context.", href: "/tour-register", linkLabel: "Browse Tours", imagePath: "/images/spring-collection.jpg", alt: "Museum tour visitors." },
+          { eyebrow: "Events", title: "Museum Programs", description: "Register for upcoming events with obvious member and ticket requirements.", href: "/event-register", linkLabel: "View Events", imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Museum event." },
+          { eyebrow: "Art", title: "Collection Search", description: "Explore artworks, exhibitions, and collection information in a more gallery-like search page.", href: "/queries", linkLabel: "Search Collection", imagePath: "/images/the-farnese-hours.jpg", alt: "Illuminated manuscript artwork." },
+        ],
         content: `
-        <section class="card narrow dashboard-card">
-          <p class="eyebrow">Member Portal</p>
-          <h1>Welcome, ${escapeHtml(user.name.split(" ")[0])}</h1>
-          <p class="dashboard-intro">Purchase admission tickets and browse museum information.</p>
-          <dl class="details dashboard-details">
-            <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
-            <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
-          </dl>
-          ${renderFlash(req)}
-          <section class="dashboard-section">
-            <h2>Plan Your Visit</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/purchase-ticket">Buy Tickets Online</a>
-              <a class="button" href="/tour-register">Browse Guided Tours</a>
-              <a class="button" href="/event-register">Browse Events</a>
-              <a class="button button-secondary" href="/queries">Explore the Collection</a>
-            </div>
+          <section class="card dashboard-card">
+            <p class="eyebrow">Member Account</p>
+            <h2>Visit overview</h2>
+            <p class="dashboard-intro">A first-time visitor should be able to tell what to do next without reading a wall of text.</p>
+            ${renderProfile(user)}
+            ${renderFlash(req)}
           </section>
-          <form method="post" action="/logout" class="dashboard-footer">
-            <button class="button" type="submit">Log Out</button>
-          </form>
-        </section>
-      `,
+        `,
       }));
     }
 
     if (isAdmissions(user)) {
       return res.send(renderPage({
-        title: "Admissions Portal",
+        title: "Admissions Overview",
         user,
+        currentPath: req.path,
+        hero: {
+          eyebrow: "Admissions Desk",
+          title: `Welcome, ${escapeHtml(user.name.split(" ")[0])}`,
+          description: "Front desk ticketing, memberships, and visitor support now live behind clearer top-level navigation.",
+          imagePath: getRoleAsset("admissions").imagePath,
+          alt: getRoleAsset("admissions").alt,
+          actions: [
+            { href: "/sell-ticket", label: "Sell Tickets" },
+            { href: "/add-membership", label: "Manage Memberships", secondary: true },
+          ],
+        },
         content: `
-        <section class="card narrow dashboard-card">
-          <p class="eyebrow">Admissions Desk</p>
-          <h1>Welcome, ${escapeHtml(user.name.split(" ")[0])}</h1>
-          <p class="dashboard-intro">Sell walk-in tickets and assist visitors with membership sign-ups and look-ups.</p>
-          <dl class="details dashboard-details">
-            <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
-            <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
-          </dl>
-          ${renderFlash(req)}
-          <section class="dashboard-section">
-            <h2>Ticket Sales</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/sell-ticket">Sell Admission Tickets</a>
-              <a class="button button-secondary" href="/ticket-sales">View Ticket Sales</a>
-            </div>
+          <section class="card dashboard-card">
+            <p class="eyebrow">Front Desk</p>
+            <h2>Admissions overview</h2>
+            <p class="dashboard-intro">Use the header tabs to move between ticket sales, membership records, and sales reporting.</p>
+            ${renderProfile(user)}
+            ${renderFlash(req)}
           </section>
-          <section class="dashboard-section">
-            <h2>Memberships</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button button-secondary" href="/add-membership">Visitor Memberships</a>
-            </div>
-          </section>
-          <form method="post" action="/logout" class="dashboard-footer">
-            <button class="button" type="submit">Log Out</button>
-          </form>
-        </section>
-      `,
+          ${renderActionCards([
+            { eyebrow: "Tickets", title: "Walk-Up Ticket Sales", description: "Process admissions with visible controls and less form confusion.", href: "/sell-ticket", linkLabel: "Open Register", imagePath: "/images/summer-showcase.jpg", alt: "Museum admissions view." },
+            { eyebrow: "Membership", title: "Visitor Memberships", description: "Create or update memberships from a more direct admissions workspace.", href: "/add-membership", linkLabel: "Open Memberships", imagePath: "/images/spring-collection.jpg", alt: "Museum member services area." },
+            { eyebrow: "Reporting", title: "Today's Sales", description: "Review daily ticket counts and revenue without leaving the admissions context.", href: "/ticket-sales", linkLabel: "Open Sales Summary", imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Museum visitor traffic." },
+          ])}
+        `,
       }));
     }
 
     if (isGiftShop(user)) {
       return res.send(renderPage({
-        title: "Gift Shop Portal",
+        title: "Gift Shop Overview",
         user,
+        currentPath: req.path,
+        hero: {
+          eyebrow: "Gift Shop",
+          title: `Welcome, ${escapeHtml(user.name.split(" ")[0])}`,
+          description: "Retail work should feel like a shop floor, with product-led entry points and visible sales actions.",
+          imagePath: getRoleAsset("giftshop").imagePath,
+          alt: getRoleAsset("giftshop").alt,
+          actions: [
+            { href: "/gift-order", label: "New Shop Order" },
+            { href: "/add-item", label: "Inventory", secondary: true },
+          ],
+        },
         content: `
-        <section class="card narrow dashboard-card">
-          <p class="eyebrow">Gift Shop</p>
-          <h1>Welcome, ${escapeHtml(user.name.split(" ")[0])}</h1>
-          <p class="dashboard-intro">Process gift shop sales and add purchased items to each transaction.</p>
-          <dl class="details dashboard-details">
-            <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
-            <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
-          </dl>
-          ${renderFlash(req)}
-          <section class="dashboard-section">
-            <h2>Sales Register</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/gift-order">New Gift Shop Order</a>
-              <a class="button button-secondary" href="/add-sale">Manage Sales</a>
-            </div>
+          <section class="card dashboard-card">
+            <p class="eyebrow">Retail Workspace</p>
+            <h2>Gift shop overview</h2>
+            <p class="dashboard-intro">The header tabs now separate current orders, sales history, and inventory instead of forcing one dashboard full of buttons.</p>
+            ${renderProfile(user)}
+            ${renderFlash(req)}
           </section>
-          <section class="dashboard-section">
-            <h2>Inventory</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/add-item">Gift Shop Inventory</a>
-            </div>
-          </section>
-          <form method="post" action="/logout" class="dashboard-footer">
-            <button class="button" type="submit">Log Out</button>
-          </form>
-        </section>
-      `,
+          ${renderActionCards([
+            { eyebrow: "Orders", title: "New Customer Order", description: "Build a gift shop order using product cards, stock badges, and a clearer cart.", href: "/gift-order", linkLabel: "Open Shop Floor", imagePath: getGiftShopAsset("Museum Tote Bag", "Merchandise").imagePath, alt: "Gift shop product display." },
+            { eyebrow: "Sales", title: "Sales Register", description: "Manage gift shop sales and line items with visible edit and delete actions.", href: "/add-sale", linkLabel: "Manage Sales", imagePath: "/images/the-birth-of-the-last-muse.jpg", alt: "Museum store merchandise." },
+            { eyebrow: "Inventory", title: "Product Inventory", description: "Keep stock levels visible and easy to manage.", href: "/add-item", linkLabel: "Open Inventory", imagePath: "/images/giftshop-placeholder.svg", alt: "Gift shop placeholder display." },
+          ])}
+        `,
       }));
     }
 
     if (isCafe(user)) {
       return res.send(renderPage({
-        title: "Café Portal",
+        title: "Cafe Overview",
         user,
+        currentPath: req.path,
+        hero: {
+          eyebrow: "Museum Cafe",
+          title: `Welcome, ${escapeHtml(user.name.split(" ")[0])}`,
+          description: "The cafe workspace now foregrounds menu browsing, checkout flow, and inventory rather than generic operations buttons.",
+          imagePath: getRoleAsset("cafe").imagePath,
+          alt: getRoleAsset("cafe").alt,
+          actions: [
+            { href: "/order", label: "New Cafe Order" },
+            { href: "/add-food", label: "Inventory", secondary: true },
+          ],
+        },
         content: `
-        <section class="card narrow dashboard-card">
-          <p class="eyebrow">Museum Café</p>
-          <h1>Welcome, ${escapeHtml(user.name.split(" ")[0])}</h1>
-          <p class="dashboard-intro">Process café orders and add café items to each transaction.</p>
-          <dl class="details dashboard-details">
-            <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
-            <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
-          </dl>
-          ${renderFlash(req)}
-          <section class="dashboard-section">
-            <h2>Orders</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/order">New Café Order</a>
-              <a class="button button-secondary" href="/add-food-sale">Manage Orders</a>
-            </div>
+          <section class="card dashboard-card">
+            <p class="eyebrow">Cafe Service</p>
+            <h2>Cafe overview</h2>
+            <p class="dashboard-intro">Use the top tabs for menu orders, order history, and stock management.</p>
+            ${renderProfile(user)}
+            ${renderFlash(req)}
           </section>
-          <section class="dashboard-section">
-            <h2>Inventory</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/add-food">Café Inventory</a>
-            </div>
-          </section>
-          <form method="post" action="/logout" class="dashboard-footer">
-            <button class="button" type="submit">Log Out</button>
-          </form>
-        </section>
-      `,
+          ${renderActionCards([
+            { eyebrow: "Menu", title: "New Cafe Order", description: "Take orders with menu cards, quantity controls, and clearer checkout steps.", href: "/order", linkLabel: "Open Menu", imagePath: "/images/cafe-placeholder.svg", alt: "Cafe ordering area." },
+            { eyebrow: "Orders", title: "Order Register", description: "Manage recorded cafe sales and active order lines.", href: "/add-food-sale", linkLabel: "Manage Orders", imagePath: "/images/cafe-placeholder.svg", alt: "Cafe service workflow." },
+            { eyebrow: "Inventory", title: "Cafe Inventory", description: "Track food and drink stock with visible status signals.", href: "/add-food", linkLabel: "Open Inventory", imagePath: "/images/cafe-placeholder.svg", alt: "Cafe stock display." },
+          ])}
+        `,
       }));
     }
 
     if (isCurator(user)) {
       return res.send(renderPage({
-        title: "Curatorial Portal",
+        title: "Curatorial Overview",
         user,
+        currentPath: req.path,
+        hero: {
+          eyebrow: "Curatorial",
+          title: `Welcome, ${escapeHtml(user.name.split(" ")[0])}`,
+          description: "Collections work now starts from an art-led overview instead of a block of undifferentiated management buttons.",
+          imagePath: getRoleAsset("curator").imagePath,
+          alt: getRoleAsset("curator").alt,
+          actions: [
+            { href: "/queries", label: "Search Collection" },
+            { href: "/add-artwork", label: "Manage Artwork", secondary: true },
+          ],
+        },
         content: `
-        <section class="card narrow dashboard-card">
-          <p class="eyebrow">Curatorial</p>
-          <h1>Welcome, ${escapeHtml(user.name.split(" ")[0])}</h1>
-          <p class="dashboard-intro">Manage artists, artworks, exhibitions, and collection care records.</p>
-          <dl class="details dashboard-details">
-            <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
-            <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
-          </dl>
-          ${renderFlash(req)}
-          <section class="dashboard-section">
-            <h2>Collection Records</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/add-artist">Artists</a>
-              <a class="button" href="/add-artwork">Artwork</a>
-              <a class="button" href="/add-exhibition">Exhibitions</a>
-              <a class="button button-secondary" href="/add-exhibition-artwork">Exhibition Artwork</a>
-              <a class="button button-secondary" href="/condition-reports">Condition Reports</a>
-              <a class="button button-secondary" href="/artwork-loans">Artwork Loans</a>
-              <a class="button button-secondary" href="/queries">Search the Collection</a>
-            </div>
+          <section class="card dashboard-card">
+            <p class="eyebrow">Collection Care</p>
+            <h2>Curatorial overview</h2>
+            <p class="dashboard-intro">The main curatorial routes are now framed around art, exhibitions, and collection records.</p>
+            ${renderProfile(user)}
+            ${renderFlash(req)}
           </section>
-          <form method="post" action="/logout" class="dashboard-footer">
-            <button class="button" type="submit">Log Out</button>
-          </form>
-        </section>
-      `,
-      }));
-    }
-
-    if (isEmployee(user)) {
-      return res.send(renderPage({
-        title: "Daily Operations",
-        user,
-        content: `
-        <section class="card narrow dashboard-card">
-          <p class="eyebrow">Museum Operations</p>
-          <h1>Welcome, ${escapeHtml(user.name.split(" ")[0])}</h1>
-          <p class="dashboard-intro">Record admissions, manage memberships, and process retail or cafe sales.</p>
-          <dl class="details dashboard-details">
-            <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
-            <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
-          </dl>
-          ${renderFlash(req)}
-          <section class="dashboard-section">
-            <h2>Admissions Desk</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/sell-ticket">Admissions Desk</a>
-              <a class="button button-secondary" href="/add-ticket">Advanced Records</a>
-              <a class="button button-secondary" href="/add-membership">Manage Memberships</a>
-            </div>
-          </section>
-          <section class="dashboard-section">
-            <h2>Retail and Cafe</h2>
-            <div class="button-row dashboard-actions">
-              <a class="button" href="/gift-order">New Gift Shop Order</a>
-              <a class="button button-secondary" href="/add-sale">Manage Gift Shop Sales</a>
-              <a class="button" href="/order">New Café Order</a>
-              <a class="button button-secondary" href="/add-food-sale">Manage Café Sales</a>
-              <a class="button button-secondary" href="/queries">Search the Collection</a>
-            </div>
-          </section>
-          <form method="post" action="/logout" class="dashboard-footer">
-            <button class="button" type="submit">Log Out</button>
-          </form>
-        </section>
-      `,
+          ${renderActionCards([
+            { eyebrow: "Search", title: "Collection Search", description: "Find artworks, exhibition status, and inventory with stronger visual structure.", href: "/queries", linkLabel: "Open Search", imagePath: "/images/the-farnese-hours.jpg", alt: "Collection artwork." },
+            { eyebrow: "Artwork", title: "Artwork Records", description: "Maintain artworks and artist links while preserving visible action controls.", href: "/add-artwork", linkLabel: "Manage Artwork", imagePath: "/images/allegory.jpg", alt: "Artwork record view." },
+            { eyebrow: "Exhibitions", title: "Exhibition Planning", description: "Work with exhibitions, assignments, and collection display records.", href: "/add-exhibition", linkLabel: "Manage Exhibitions", imagePath: "/images/spring-collection.jpg", alt: "Exhibition planning image." },
+          ])}
+        `,
       }));
     }
 
@@ -244,16 +232,23 @@ function registerDashboardRoutes(app, { pool }) {
       }
     }
 
+    const urgentCount = notifications.length + triggerViolations.length;
     const notificationsHtml = notifications.length > 0
       ? `
-        <section class="dashboard-section notifications-section">
-          <h2>Notifications <span class="badge">${notifications.length}</span></h2>
+        <section class="card dashboard-card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Supervisor Alerts</p>
+              <h2>Unread notifications</h2>
+            </div>
+            <span class="status-badge status-badge--danger">${notifications.length} open</span>
+          </div>
           <ul class="notification-list">
-            ${notifications.map(n => `
+            ${notifications.map((n) => `
               <li class="notification-item">
                 <span class="notification-message">${escapeHtml(n.message)}</span>
                 <span class="notification-time">${new Date(n.created_at).toLocaleString()}</span>
-                <form method="post" action="/notifications/${n.notification_id}/read" style="display:inline">
+                <form method="post" action="/notifications/${n.notification_id}/read" class="inline-form">
                   <button class="button button-secondary button-small" type="submit">Dismiss</button>
                 </form>
               </li>
@@ -264,15 +259,22 @@ function registerDashboardRoutes(app, { pool }) {
           </form>
         </section>`
       : `
-        <section class="dashboard-section notifications-section">
-          <h2>Notifications</h2>
-          <p class="muted">No new notifications.</p>
+        <section class="card dashboard-card">
+          <p class="eyebrow">Supervisor Alerts</p>
+          <h2>Unread notifications</h2>
+          <div class="empty-state"><p>No new notifications.</p></div>
         </section>`;
 
     const triggerViolationsHtml = triggerViolations.length > 0
       ? `
-        <section class="dashboard-section notifications-section">
-          <h2>Trigger Violations</h2>
+        <section class="card dashboard-card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Business Rules</p>
+              <h2>Trigger violations</h2>
+            </div>
+            <span class="status-badge status-badge--danger">${triggerViolations.length} unresolved</span>
+          </div>
           <table>
             <thead>
               <tr>
@@ -301,86 +303,49 @@ function registerDashboardRoutes(app, { pool }) {
           </table>
         </section>`
       : `
-        <section class="dashboard-section notifications-section">
-          <h2>Trigger Violations</h2>
-          <p class="muted">No unresolved trigger violations.</p>
+        <section class="card dashboard-card">
+          <p class="eyebrow">Business Rules</p>
+          <h2>Trigger violations</h2>
+          <div class="empty-state"><p>No unresolved trigger violations.</p></div>
         </section>`;
 
     return res.send(renderPage({
-      title: "Supervisor Dashboard",
+      title: "Supervisor Overview",
       user,
+      currentPath: req.path,
+      hero: {
+        eyebrow: "Supervisor Portal",
+        title: `Welcome, ${escapeHtml(user.name.split(" ")[0])}`,
+        description: "Supervisor alerts now sit at the top of the page and the rest of the workspace is organized by major operational areas.",
+        imagePath: getRoleAsset("supervisor").imagePath,
+        alt: getRoleAsset("supervisor").alt,
+        actions: [
+          { href: "/reports", label: "Open Reports" },
+          { href: "/queries", label: "Search Collection", secondary: true },
+        ],
+      },
+      alertContent: urgentCount > 0 ? {
+        type: "error",
+        title: `Immediate attention required: ${urgentCount} unresolved item${urgentCount === 1 ? "" : "s"}`,
+        message: "Notifications and trigger violations are surfaced before all other operational tools so they cannot be ignored.",
+      } : null,
       content: `
-      <section class="card narrow dashboard-card">
-        <p class="eyebrow">Management Portal</p>
-        <h1>Welcome, ${escapeHtml(user.name.split(" ")[0])}</h1>
-        <p class="dashboard-intro">Manage the collection, staff, events, and review operational reports.</p>
-        <dl class="details dashboard-details">
-          <div class="detail-item"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div>
-          <div class="detail-item"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div>
-        </dl>
-        ${renderFlash(req)}
+        <section class="card dashboard-card">
+          <p class="eyebrow">Operational Overview</p>
+          <h2>Supervisor workspace</h2>
+          <p class="dashboard-intro">The navigation now separates oversight, reporting, tours, events, and collection operations.</p>
+          ${renderProfile(user)}
+          ${renderFlash(req)}
+        </section>
         ${notificationsHtml}
         ${triggerViolationsHtml}
-        <section class="dashboard-section">
-          <h2>Ticket Sales &amp; Front Desk</h2>
-          <div class="button-row dashboard-actions">
-            <a class="button" href="/sell-ticket">Admissions Desk</a>
-            <a class="button button-secondary" href="/add-membership">Visitor Memberships</a>
-          </div>
-        </section>
-        <section class="dashboard-section">
-          <h2>Collections Management</h2>
-          <div class="button-row dashboard-actions">
-            <a class="button" href="/add-artist">Manage Artists</a>
-            <a class="button" href="/add-artwork">Manage Artworks</a>
-            <a class="button" href="/add-exhibition">Manage Exhibitions</a>
-            <a class="button button-secondary" href="/add-exhibition-artwork">Assign Artwork to Exhibitions</a>
-          </div>
-        </section>
-        <section class="dashboard-section">
-          <h2>Conservation &amp; Loans</h2>
-          <div class="button-row dashboard-actions">
-            <a class="button" href="/condition-reports">Condition Reports</a>
-            <a class="button" href="/artwork-loans">Artwork Loans</a>
-            <a class="button button-secondary" href="/institutions">Manage Institutions</a>
-          </div>
-        </section>
-        <section class="dashboard-section">
-          <h2>Guided Tours</h2>
-          <div class="button-row dashboard-actions">
-            <a class="button" href="/tours">Schedule Tours</a>
-          </div>
-        </section>
-        <section class="dashboard-section">
-          <h2>Staff &amp; Scheduling</h2>
-          <div class="button-row dashboard-actions">
-            <a class="button" href="/add-employee">Manage Staff</a>
-            <a class="button" href="/add-department">Manage Departments</a>
-            <a class="button button-secondary" href="/add-schedule">Manage Schedules</a>
-          </div>
-        </section>
-        <section class="dashboard-section">
-          <h2>Events</h2>
-          <div class="button-row dashboard-actions">
-            <a class="button" href="/add-event">Manage Events</a>
-            <a class="button button-secondary" href="/add-event-registration">Event Registrations</a>
-          </div>
-        </section>
-        <section class="dashboard-section">
-          <h2>Inventory &amp; Reporting</h2>
-          <div class="button-row dashboard-actions">
-            <a class="button" href="/add-ticket">Ticket Records</a>
-            <a class="button" href="/add-item">Gift Shop Inventory</a>
-            <a class="button" href="/add-food">Café Inventory</a>
-            <a class="button button-secondary" href="/queries">Search the Collection</a>
-            <a class="button button-secondary" href="/reports">Reports</a>
-          </div>
-        </section>
-        <form method="post" action="/logout" class="dashboard-footer">
-          <button class="button" type="submit">Log Out</button>
-        </form>
-      </section>
-    `,
+        ${renderActionCards([
+          { eyebrow: "Reports", title: "Management Reports", description: "Review ticketing, revenue, memberships, and operations through tabbed reporting views.", href: "/reports", linkLabel: "Open Reports", imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Operations report context." },
+          { eyebrow: "Tours", title: "Guided Tour Scheduling", description: "Schedule tours, review roster details, and manage guide assignments.", href: "/tours", linkLabel: "Manage Tours", imagePath: "/images/spring-collection.jpg", alt: "Guided tour planning." },
+          { eyebrow: "Events", title: "Museum Events", description: "Maintain events and registrations with clearer visibility into member access and capacity.", href: "/add-event", linkLabel: "Manage Events", imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Museum event management." },
+          { eyebrow: "Collection", title: "Collection and Inventory", description: "Search the collection and review retail, cafe, and collection records from one operations view.", href: "/queries", linkLabel: "Open Collection Search", imagePath: getExhibitionAsset("Spring Collection 2026").imagePath, alt: "Collection search image." },
+        ])}
+      `,
     }));
   }));
 
