@@ -179,7 +179,7 @@
   max-width: 15ch;
   margin: 0 0 0.8rem;
   color: var(--ink);
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(2.4rem, 5vw, 5rem);
   line-height: 0.9;
   letter-spacing: -0.02em;
@@ -246,7 +246,7 @@
   display: block;
   margin: 0.35rem 0 0;
   color: var(--ink);
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(4rem, 8vw, 7rem);
   font-weight: 500;
   line-height: 0.9;
@@ -380,7 +380,7 @@
 .order-ledger h2 {
   margin: 0.1rem 0 0;
   color: var(--ink);
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-display);
   font-size: 2rem;
   line-height: 1;
 }
@@ -449,7 +449,7 @@
 .order-ledger__totals div:last-child dt,
 .order-ledger__totals div:last-child dd {
   color: var(--ink);
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-display);
   font-size: 1.65rem;
 }
 
@@ -553,7 +553,7 @@
 .supervisor-section-heading p {
   margin: 0;
   color: var(--ink);
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   font-style: italic;
 }
@@ -581,7 +581,7 @@
   display: block;
   margin: 1rem 0 0.25rem;
   color: var(--ink);
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-display);
   font-size: 3rem;
   font-weight: 500;
   line-height: 1;
@@ -654,7 +654,7 @@
 
 .supervisor-mini-grid strong {
   color: var(--ink);
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-display);
   font-size: 1.8rem;
   font-weight: 500;
 }
@@ -686,7 +686,7 @@
 .supervisor-revenue-panel > strong {
   display: block;
   color: #fff;
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(3rem, 5vw, 4.8rem);
   font-weight: 500;
   line-height: 0.95;

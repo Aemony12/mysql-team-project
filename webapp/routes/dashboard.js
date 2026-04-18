@@ -383,27 +383,44 @@ function registerDashboardRoutes(app, { pool }) {
           alt: "Museum member gallery.",
           actions: memberActions,
         },
-        featureCards: memberCards,
         content: `
-          <section class="member-account-panel">
-            <div>
-              <h2>${hasMembership ? "Your Membership" : "Your Account"}</h2>
+          <section class="member-dashboard-layout">
+            <div class="member-dashboard-main">
+              <article class="member-primary-action">
+                <img src="${hasTicket ? "/images/the-farnese-hours.jpg" : "/images/admission.jpg"}" alt="">
+                <div>
+                  <p class="eyebrow">${hasTicket ? "Next" : "Visit"}</p>
+                  <h2>${hasTicket ? "Explore the collection before your visit." : "Buy admission with your member pricing."}</h2>
+                  <p>${hasTicket ? "Search artwork records, tours, and member events from one place." : "Choose ticket type first, then add your visit date and exhibition."}</p>
+                  <a class="button" href="${hasTicket ? "/queries?view=artwork-status#query-tabs" : "/purchase-ticket"}">${hasTicket ? "Explore Art" : "Buy Tickets"}</a>
+                </div>
+              </article>
+              <div class="member-support-grid">
+                ${memberCards.slice(0, 3).map((card) => `
+                  <article class="member-support-card">
+                    <img src="${card.imagePath}" alt="${card.alt}">
+                    <div>
+                      <p class="eyebrow">${card.eyebrow}</p>
+                      <h2>${card.title}</h2>
+                      <a href="${card.href}">${card.linkLabel}</a>
+                    </div>
+                  </article>
+                `).join("")}
+              </div>
             </div>
-            <div class="summary-grid">
-              <article class="summary-card">
-                <p class="eyebrow">Status</p>
-                <strong class="status-badge status-badge--${hasMembership ? "success" : membershipInfo ? "warning" : "neutral"}">${escapeHtml(memberStatus)}</strong>
-              </article>
-              <article class="summary-card">
-                <p class="eyebrow">Admission</p>
-                <strong class="status-badge status-badge--${hasTicket ? "success" : "neutral"}">${hasTicket ? `${ticketCount} ticket${ticketCount === 1 ? "" : "s"}` : "No ticket on file"}</strong>
-              </article>
-              <article class="summary-card">
-                <p class="eyebrow">Valid Through</p>
-                <strong class="status-badge status-badge--${hasMembership ? "success" : "neutral"}">${membershipInfo?.Date_Exited ? escapeHtml(new Date(membershipInfo.Date_Exited).toLocaleDateString()) : "N/A"}</strong>
-              </article>
-            </div>
-            ${renderFlash(req)}
+            <aside class="member-status-rail">
+              <h2>${hasMembership ? "Membership" : "Account"}</h2>
+              ${renderFlash(req)}
+              <dl>
+                <div><dt>Status</dt><dd><span class="status-badge status-badge--${hasMembership ? "success" : membershipInfo ? "warning" : "neutral"}">${escapeHtml(memberStatus)}</span></dd></div>
+                <div><dt>Admission</dt><dd>${hasTicket ? `${ticketCount} ticket${ticketCount === 1 ? "" : "s"}` : "No ticket on file"}</dd></div>
+                <div><dt>Valid Through</dt><dd>${membershipInfo?.Date_Exited ? escapeHtml(new Date(membershipInfo.Date_Exited).toLocaleDateString()) : "N/A"}</dd></div>
+              </dl>
+              <div class="workspace-links">
+                <a class="button button-secondary" href="/event-register">Events</a>
+                <a class="button button-secondary" href="/tour-register">Tours</a>
+              </div>
+            </aside>
           </section>
         `,
       }));

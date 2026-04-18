@@ -29,6 +29,27 @@ function renderLoginPage({ req, title, eyebrow, heading, intro, action, secondar
             <button class="button" type="submit" form="login-form">${action}</button>
             ${secondaryLink}
           </div>
+          ${hiddenAudience === "member" ? `
+            <div class="account-entry-grid" aria-label="Member account options">
+              <article>
+                <p class="eyebrow">Returning</p>
+                <h2>Member account</h2>
+                <p>Use existing credentials for tickets, tours, events, and membership.</p>
+              </article>
+              <article>
+                <p class="eyebrow">New</p>
+                <h2>Create account</h2>
+                <p>Set up access before buying membership or registering for programs.</p>
+                <a href="/member-signup">Create member account</a>
+              </article>
+              <article>
+                <p class="eyebrow">Browse</p>
+                <h2>Continue public site</h2>
+                <p>Return to public visit planning before signing in.</p>
+                <a href="/">Return home</a>
+              </article>
+            </div>
+          ` : ""}
           ${hiddenAudience === "staff" ? `
             <div class="staff-access-list" aria-label="Staff role access">
               <span>Admissions: tickets and memberships</span>
@@ -80,61 +101,86 @@ function registerAuthenticationRoutes(app, { pool }) {
         ],
       },
       content: `
-        ${renderCarousel({
-          title: "Pathways",
-          slides: [
-            {
-              eyebrow: "Visit",
-              title: "Tickets",
-              description: "Admission, member pricing, tours, and events in one place.",
-              href: req.session.user ? "/purchase-ticket" : "/member-login",
-              linkLabel: "Plan Visit",
-              imagePath: "/images/summer-showcase.jpg",
-              alt: "Visitors approaching a museum experience.",
-            },
-            {
-              eyebrow: "Art",
-              title: "Collection",
-              description: "Search artworks, artists, exhibitions, and collection records.",
-              href: req.session.user ? "/queries?view=artwork-status#query-tabs" : "/member-login",
-              linkLabel: "Search Collection",
-              imagePath: "/images/the-farnese-hours.jpg",
-              alt: "Collection artwork and exhibition materials.",
-            },
-            {
-              eyebrow: "Operations",
-              title: "Staff",
-              description: "Role-based tools for the museum team.",
-              href: "/staff-login",
-              linkLabel: "Staff Login",
-              imagePath: "/images/spring-exhibition-opening-gala.jpg",
-              alt: "Museum staff and event operations.",
-            },
-          ],
-        })}
-        <section class="card">
+        <section class="public-section public-section--plan" id="plan-visit">
           <div class="section-header">
             <div>
-              <h2>Access</h2>
+              <p class="eyebrow">Plan Your Visit</p>
+              <h2>Choose a next step.</h2>
             </div>
           </div>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <div class="feature-card__media"><img src="/images/summer-showcase.jpg" alt="Member visit planning area."></div>
+          <div class="public-choice-grid">
+            <article class="public-choice-card">
+              <div class="public-choice-card__media"><img src="/images/summer-showcase.jpg" alt="Visitors entering a museum exhibition."></div>
               <div class="feature-card__body">
-                <h2>Member Access</h2>
-                <p>Tickets, tours, events, and membership.</p>
-                <a class="feature-card__link" href="/member-login">Member Login</a>
+                <p class="eyebrow">Admission</p>
+                <h2>Tickets</h2>
+                <p>Choose admission and add exhibitions.</p>
+                <a class="feature-card__link" href="${req.session.user ? "/purchase-ticket" : "/member-login"}">Buy Tickets</a>
               </div>
             </article>
-            <article class="feature-card">
-              <div class="feature-card__media"><img src="/images/museum4.jpg" alt="Museum staff and operations area."></div>
+            <article class="public-choice-card">
+              <div class="public-choice-card__media"><img src="/images/museum3.jpg" alt="Museum member gallery."></div>
               <div class="feature-card__body">
-                <h2>Staff Access</h2>
-                <p>Admissions, retail, cafe, curatorial, and reporting.</p>
-                <a class="feature-card__link" href="/staff-login">Staff Login</a>
+                <p class="eyebrow">Membership</p>
+                <h2>Member Services</h2>
+                <p>Manage benefits, pricing, and access.</p>
+                <a class="feature-card__link" href="${req.session.user ? "/purchase-membership" : "/member-login"}">Open Membership</a>
               </div>
             </article>
+            <article class="public-choice-card">
+              <div class="public-choice-card__media"><img src="/images/museum5.jpg" alt="Museum tour visitors."></div>
+              <div class="feature-card__body">
+                <p class="eyebrow">Guided Visits</p>
+                <h2>Tours</h2>
+                <p>Reserve guided tours for current exhibitions.</p>
+                <a class="feature-card__link" href="${req.session.user ? "/tour-register" : "/member-login"}">Browse Tours</a>
+              </div>
+            </article>
+            <article class="public-choice-card">
+              <div class="public-choice-card__media"><img src="/images/spring-exhibition-opening-gala.jpg" alt="Museum evening event."></div>
+              <div class="feature-card__body">
+                <p class="eyebrow">Programs</p>
+                <h2>Events</h2>
+                <p>Register for member and public programs.</p>
+                <a class="feature-card__link" href="${req.session.user ? "/event-register" : "/member-login"}">View Events</a>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section class="public-section public-section--whats-on">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">What's Happening Now</p>
+              <h2>Current highlights.</h2>
+            </div>
+          </div>
+          <div class="highlight-band">
+            <article class="highlight-band__primary">
+              <img src="/images/spring-collection.jpg" alt="Spring Collection exhibition gallery.">
+              <div>
+                <p class="eyebrow">Exhibition</p>
+                <h2>Spring Collection 2026</h2>
+                <p>A seasonal presentation of works, gallery talks, and member previews.</p>
+                <a class="button" href="${req.session.user ? "/purchase-ticket" : "/member-login"}">Plan Admission</a>
+              </div>
+            </article>
+            <div class="highlight-band__rail">
+              <article>
+                <span>Event</span>
+                <strong>Spring Exhibition Opening Gala</strong>
+                <a href="${req.session.user ? "/event-register" : "/member-login"}">Register</a>
+              </article>
+              <article>
+                <span>Tour</span>
+                <strong>Guided exhibition visits</strong>
+                <a href="${req.session.user ? "/tour-register" : "/member-login"}">Browse</a>
+              </article>
+              <article>
+                <span>Members</span>
+                <strong>20% admission pricing</strong>
+                <a href="${req.session.user ? "/purchase-membership" : "/member-login"}">Open</a>
+              </article>
+            </div>
           </div>
         </section>
         <section class="home-collection-search" id="home-collection-search">
@@ -214,6 +260,7 @@ function registerAuthenticationRoutes(app, { pool }) {
       title: "Member Sign Up",
       user: req.session.user,
       currentPath: req.path,
+      pageTheme: "member-entry",
       content: `
         <section class="card auth-card auth-shell">
           <div class="auth-panel">

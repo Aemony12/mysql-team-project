@@ -105,6 +105,20 @@ function renderTicketTypeCards(hasDiscount) {
   `;
 }
 
+function renderTicketSteps(activeStep = 1) {
+  const steps = ["Choose ticket", "Visit details", "Account", "Review and pay"];
+  return `
+    <ol class="process-steps" aria-label="Ticket purchase steps">
+      ${steps.map((step, index) => `
+        <li class="${index + 1 === activeStep ? "is-active" : index + 1 < activeStep ? "is-complete" : ""}">
+          <span>${index + 1}</span>
+          <strong>${escapeHtml(step)}</strong>
+        </li>
+      `).join("")}
+    </ol>
+  `;
+}
+
 function registerPurchaseTicketRoutes(app, { pool }) {
   app.get("/purchase-membership", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
     let membershipInfo = null;
@@ -301,8 +315,18 @@ function registerPurchaseTicketRoutes(app, { pool }) {
             actions: [{ href: "/purchase-membership", label: membershipInfo ? "Open Membership" : "Join" }],
           },
       content: `
+        <section class="flow-shell">
+          ${renderTicketSteps(1)}
+          <div class="applied-state applied-state--${membershipId ? "success" : "neutral"}">
+            <div>
+              <p class="eyebrow">${membershipId ? "Member Pricing Applied" : "Guest Pricing"}</p>
+              <strong>${membershipId ? "20% admission discount is active." : "Sign in with active membership to apply discounted admission."}</strong>
+            </div>
+            <span>${membershipId ? `Valid through ${escapeHtml(expiryDate)}` : "Standard admission prices shown"}</span>
+          </div>
+        </section>
         ${membershipInfo && membershipInfo.Status !== "Active" && membershipInfo.Status !== "Cancelled" ? `
-          <section class="card">
+          <section class="card quiet-card">
             <h2>Membership Renewal</h2>
             <form method="post" action="/member-renew-membership">
               <button class="button" type="submit">Renew Membership</button>
@@ -310,41 +334,34 @@ function registerPurchaseTicketRoutes(app, { pool }) {
           </section>
         ` : ""}
         ${membershipInfo?.Status === "Cancelled" ? `
-          <section class="card">
+          <section class="card quiet-card">
             <h2>Your Membership</h2>
             <p class="section-lead">Membership is cancelled. Restore it here for member pricing, tours, and events.</p>
             <a class="button" href="/purchase-membership">Open Membership</a>
           </section>
         ` : ""}
-        <section class="card">
-          <div class="section-header">
-            <div>
-              <h2>Your Membership</h2>
-            </div>
-          </div>
-          <div class="summary-grid">
-            ${renderSummaryCard("Status", escapeHtml(membershipStatus), membershipTone)}
-            ${renderSummaryCard("Member Since", escapeHtml(joinedDate), "neutral")}
-            ${renderSummaryCard("Valid Through", escapeHtml(expiryDate), membershipId ? "success" : "warning")}
-          </div>
-          ${membershipInfo && (membershipInfo.Status === "Expired" || membershipInfo.Status === "Active") ? `
-            <form method="post" action="/member-renew-membership">
-              <button class="button" type="submit">${membershipInfo.Status === "Expired" ? "Renew Membership" : "Renew Early"}</button>
-            </form>
-          ` : ""}
-        </section>
         <section class="card" id="ticket-form">
           <div class="section-header">
             <div>
-              <h2>Admission Tickets</h2>
+              <p class="eyebrow">Step 1</p>
+              <h2>Choose ticket type</h2>
             </div>
             <span class="status-badge status-badge--${membershipId ? "success" : "neutral"}">${membershipId ? "Member pricing" : "Guest pricing"}</span>
           </div>
           ${renderFlash(req)}
           ${renderTicketTypeCards(Boolean(membershipId))}
         </section>
-        <section class="card">
-          <h2>Recent Purchases</h2>
+        <section class="supporting-section">
+          <h2>Exhibition add-ons</h2>
+          ${renderExhibitionCards(exhibitions)}
+        </section>
+        <section class="card quiet-card">
+          <h2>Account activity</h2>
+          <div class="summary-grid">
+            ${renderSummaryCard("Membership", escapeHtml(membershipStatus), membershipTone)}
+            ${renderSummaryCard("Member Since", escapeHtml(joinedDate), "neutral")}
+            ${renderSummaryCard("Valid Through", escapeHtml(expiryDate), membershipId ? "success" : "warning")}
+          </div>
           <table>
             <thead>
               <tr>
@@ -358,10 +375,6 @@ function registerPurchaseTicketRoutes(app, { pool }) {
               ${ticketRows || '<tr><td colspan="4">No ticket purchases found.</td></tr>'}
             </tbody>
           </table>
-        </section>
-        <section class="card">
-          <h2>Exhibitions</h2>
-          ${renderExhibitionCards(exhibitions)}
         </section>
       `,
     }));
@@ -417,10 +430,14 @@ function registerPurchaseTicketRoutes(app, { pool }) {
         ],
       },
       content: `
+        <section class="flow-shell">
+          ${renderTicketSteps(2)}
+        </section>
         <section class="card">
           <div class="content-rail">
             <div>
-              <h2>Visit Details</h2>
+              <p class="eyebrow">Step 2</p>
+              <h2>Visit details and add-ons</h2>
               ${renderFlash(req)}
               <form method="post" action="/purchase-ticket" class="form-grid">
                 <input type="hidden" name="ticket_type" value="${escapeHtml(ticket.value)}">

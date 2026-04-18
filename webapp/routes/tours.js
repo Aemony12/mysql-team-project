@@ -17,7 +17,7 @@ function renderTourCards(tours, membershipActive, hasMembership) {
   }
 
   return `
-    <div class="feature-grid">
+    <div class="feature-grid program-grid">
       ${tours.map((tour) => {
         const asset = getExhibitionAsset(tour.Exhibition_Name || tour.Tour_Name);
         const spotsLeft = tour.Max_Capacity - tour.Registered_Count;
@@ -445,11 +445,22 @@ function registerToursRoutes(app, { pool }) {
       } : null,
       content: `
         <section class="card" id="tour-options">
-          <h2>Guided Tours</h2>
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Browse</p>
+              <h2>Guided Tours</h2>
+            </div>
+          </div>
+          <div class="program-filter-bar" aria-label="Tour filters">
+            <span>Date</span>
+            <span>Exhibition</span>
+            <span>Language</span>
+            <span>Availability</span>
+          </div>
           ${renderFlash(req)}
           ${renderTourCards(upcomingTours, membershipActive, hasMembership)}
         </section>
-        <section class="card">
+        <section class="card quiet-card">
           <h2>My Tours</h2>
           <table>
             <thead>

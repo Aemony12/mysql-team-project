@@ -21,7 +21,7 @@ function renderEventBrowseCards(events, membershipActive, hasTicket, hasMembersh
   }
 
   return `
-    <div class="feature-grid">
+    <div class="feature-grid program-grid">
       ${events.map((ev) => {
         const asset = getExhibitionAsset(ev.event_Name, ev.Image_URL);
         const capacity = Number(ev.Max_capacity) || 0;
@@ -381,11 +381,22 @@ function registerEventRegistrationRoutes(app, { pool }) {
         : null,
       content: `
         <section class="card" id="upcoming-events">
-          <h2>Events</h2>
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Browse</p>
+              <h2>Events</h2>
+            </div>
+          </div>
+          <div class="program-filter-bar" aria-label="Event filters">
+            <span>Date</span>
+            <span>Program type</span>
+            <span>Member eligibility</span>
+            <span>Availability</span>
+          </div>
           ${renderFlash(req)}
           ${renderEventBrowseCards(upcomingEvents, membershipActive, hasTicket, hasMembership)}
         </section>
-        <section class="card">
+        <section class="card quiet-card">
           <h2>My Events</h2>
           <table>
             <thead>

@@ -434,7 +434,7 @@
         target.textContent = text.slice(0, index);
         index += 1;
         if (index <= text.length) {
-          window.setTimeout(write, 42);
+          window.setTimeout(write, 200);
         } else {
           target.classList.add("typewriter-text--done");
         }
