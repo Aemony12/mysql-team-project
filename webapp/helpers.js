@@ -20,7 +20,7 @@ const ART_PERIODS = [
 const PLACEHOLDER_ASSETS = {
   artwork: "/images/artwork-placeholder.svg",
   exhibit: "/images/exhibit-placeholder.svg",
-  giftshop: "/images/giftshop-placeholder.svg",
+  giftshop: "/images/gift-shop.jpg",
   cafe: "/images/cafe-placeholder.svg",
   visit: "/images/visit-placeholder.svg",
 };
@@ -45,37 +45,78 @@ const EXHIBITION_ASSETS = {
   "art history: renaissance": "/images/art-history-renaissance.jpg",
 };
 
+const ARTIST_ASSETS = {
+  "jean-auguste-dominique ingres": "/images/Jean-Auguste-Dominique-Ingres.jpg",
+  "jean-auguste-dominique-ingres": "/images/Jean-Auguste-Dominique-Ingres.jpg",
+  "albrecht durer": "/images/albrecht-durer.jpg",
+  "albrecht dürer": "/images/albrecht-durer.jpg",
+  "carl frederik aagaard": "/images/carl-frederik-aagaard.jpg",
+  "giovanni di balduccio": "/images/giovanni-di-balduccio.jpg",
+  "giulio clovio": "/images/giulio-clovio.jpg",
+  "hans von aachen": "/images/hans-von-aachen.jpg",
+  "henry fuseli": "/images/henry-fuseli.jpg",
+  "jacopo da empoli": "/images/jacopo-da-empoli.jpg",
+  "paul egell": "/images/paul-egell.jpg",
+};
+
 const ROLE_ASSETS = {
-  public: { imagePath: "/images/spring-collection.jpg", alt: "Museum gallery interior." },
-  user: { imagePath: "/images/spring-collection.jpg", alt: "Visitors moving through a museum gallery." },
-  admissions: { imagePath: "/images/summer-showcase.jpg", alt: "Museum entrance and admissions area." },
-  giftshop: { imagePath: "/images/the-birth-of-the-last-muse.jpg", alt: "Museum retail display inspired by collection artwork." },
-  cafe: { imagePath: "/images/the-rose-garden.jpg", alt: "Museum cafe atmosphere inspired by the collection." },
-  curator: { imagePath: "/images/the-farnese-hours.jpg", alt: "Historic illuminated artwork from the museum collection." },
-  supervisor: { imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Museum event and operations overview." },
-  employee: { imagePath: "/images/summer-showcase.jpg", alt: "Museum staff workspace." },
+  public: { imagePath: "/images/museum2.jpg", alt: "Museum gallery atrium." },
+  user: { imagePath: "/images/museum3.jpg", alt: "Museum visitor gallery." },
+  admissions: { imagePath: "/images/admission.jpg", alt: "Museum admissions desk." },
+  giftshop: { imagePath: "/images/gift-shop.jpg", alt: "Museum gift shop display." },
+  cafe: { imagePath: "/images/cafe.jpg", alt: "Museum cafe counter." },
+  curator: { imagePath: "/images/exhibit.jpg", alt: "Museum exhibition gallery." },
+  supervisor: { imagePath: "/images/museum4.jpg", alt: "Museum operations gallery." },
+  employee: { imagePath: "/images/museum5.jpg", alt: "Museum staff workspace." },
 };
 
 const GIFTSHOP_ASSETS = {
-  apparel: "/images/giftshop-placeholder.svg",
-  books: "/images/giftshop-placeholder.svg",
-  souvenirs: "/images/giftshop-placeholder.svg",
-  collectibles: "/images/giftshop-placeholder.svg",
-  toys: "/images/giftshop-placeholder.svg",
-  merchandise: "/images/giftshop-placeholder.svg",
+  apparel: "/images/scarf.jpg",
+  books: "/images/art-history-coloring-book.jpg",
+  souvenirs: "/images/magnet.jpg",
+  collectibles: "/images/replica-ancient-coin.jpg",
+  toys: "/images/kids-art-kit.jpg",
+  merchandise: "/images/tote.jpg",
+};
+
+const GIFTSHOP_ITEM_ASSETS = {
+  "museum tote bag": "/images/tote.jpg",
+  "van gogh umbrella": "/images/van-gogh-umbrella.jpg",
+  "art history coloring book": "/images/art-history-coloring-book.jpg",
+  "museum magnet set": "/images/magnet.jpg",
+  "replica ancient coin": "/images/replica-ancient-coin.jpg",
+  "kids art kit": "/images/kids-art-kit.jpg",
+  "exhibition catalog: sp 2026": "/images/catalogue.jpg",
+  "museum logo scarf": "/images/scarf.jpg",
+  "van gogh shirt": "/images/shirt.jpg",
+  "van gogh print": "/images/van-gogh.jpg",
 };
 
 const CAFE_ASSETS = {
-  food: "/images/cafe-placeholder.svg",
-  drink: "/images/cafe-placeholder.svg",
-  dessert: "/images/cafe-placeholder.svg",
-  snack: "/images/cafe-placeholder.svg",
+  food: "/images/salad.jpg",
+  drink: "/images/cappuccino.jpg",
+  dessert: "/images/croissant.jpg",
+  snack: "/images/blueberry-muffin.jpg",
   other: "/images/cafe-placeholder.svg",
+};
+
+const CAFE_ITEM_ASSETS = {
+  espresso: "/images/espresso.jpg",
+  cappuccino: "/images/cappuccino.jpg",
+  "blueberry muffin": "/images/blueberry-muffin.jpg",
+  "quiche lorraine": "/images/quiche.jpg",
+  "greek salad": "/images/salad.jpg",
+  "kids lunch box": "/images/pretzel.jpg",
+  "bottled water": "/images/water.jpg",
+  "chocolate croissant": "/images/croissant.jpg",
+  "matcha latte": "/images/matcha.jpg",
+  "cake pop": "/images/cake-pop.jpg",
+  sandwich: "/images/sandwich.jpg",
 };
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
-    setFlash(req, "Please log in first.");
+    setFlash(req, "Sign in to continue.");
     return res.redirect("/login");
   }
 
@@ -92,7 +133,7 @@ function setFlash(req, message) {
 
 function getFlashType(message) {
   const value = String(message || "").toLowerCase();
-  if (value.includes("error") || value.includes("invalid") || value.includes("cannot") || value.includes("inactive")) {
+  if (value.includes("error") || value.includes("invalid") || value.includes("cannot") || value.includes("inactive") || value.includes("denied") || value.includes("violation") || value.includes("required")) {
     return "error";
   }
   if (value.includes("warning") || value.includes("expires") || value.includes("full")) {
@@ -111,7 +152,14 @@ function renderFlash(req) {
 
   const message = req.session.flash;
   const type = getFlashType(message);
-  const html = `<div class="flash flash--${type}" role="status" aria-live="polite">${escapeHtml(message)}</div>`;
+  const urgent = type === "error" || type === "warning";
+  const html = `
+    <div class="flash flash--${type} ${urgent ? "flash--popover" : ""}" role="${type === "error" ? "alert" : "status"}" aria-live="${urgent ? "assertive" : "polite"}">
+      <strong>${type === "error" ? "Action needed" : type === "warning" ? "Review" : "Status"}</strong>
+      <span>${escapeHtml(message)}</span>
+      ${urgent ? '<button class="flash__close" type="button" data-dismiss-flash aria-label="Dismiss message">Dismiss</button>' : ""}
+    </div>
+  `;
   delete req.session.flash;
   return html;
 }
@@ -125,7 +173,7 @@ function getRoleLabel(user) {
     user: "Member",
     admissions: "Admissions Desk",
     giftshop: "Gift Shop",
-    cafe: "Cafe",
+    cafe: "Café",
     curator: "Curator",
     supervisor: "Supervisor",
     employee: "Museum Staff",
@@ -153,7 +201,7 @@ function getRoleSummary(user) {
     user: "Tickets, tours, events, and member visit planning.",
     admissions: "Front desk sales, memberships, and visitor support.",
     giftshop: "Retail orders, merchandise inventory, and point-of-sale work.",
-    cafe: "Cafe orders, menu inventory, and food service operations.",
+    cafe: "Café orders, menu inventory, and food service operations.",
     curator: "Collections, exhibitions, conservation, and artwork records.",
     supervisor: "Alerts, reports, staffing, inventory, and operational oversight.",
     employee: "Daily museum operations across admissions, retail, and cafe service.",
@@ -177,24 +225,59 @@ function normalizeLookup(value) {
     .replace(/\s+/g, " ");
 }
 
-function getArtworkAsset(title, type = "") {
+function sanitizeImageUrl(value) {
+  const raw = String(value ?? "").trim();
+
+  if (!raw) {
+    return null;
+  }
+
+  if (raw.startsWith("/images/")) {
+    return raw;
+  }
+
+  if (/^[a-z0-9][a-z0-9._/-]*\.(jpe?g|png|webp|gif|svg)$/i.test(raw)) {
+    return raw.startsWith("/") ? raw : `/images/${raw.replace(/^images\//i, "")}`;
+  }
+
+  try {
+    const parsed = new URL(raw);
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function getArtworkAsset(title, type = "", imageUrl = null) {
   const key = normalizeLookup(title);
   const typeKey = normalizeLookup(type);
   const typeMatch = ARTWORK_ASSETS[`${key}|${typeKey}`];
+  const customImage = sanitizeImageUrl(imageUrl);
 
   return {
-    imagePath: typeMatch || ARTWORK_ASSETS[key] || PLACEHOLDER_ASSETS.artwork,
+    imagePath: customImage || typeMatch || ARTWORK_ASSETS[key] || PLACEHOLDER_ASSETS.artwork,
     alt: title ? `${title} artwork image.` : "Artwork image pending.",
-    isPlaceholder: !(typeMatch || ARTWORK_ASSETS[key]),
+    isPlaceholder: !(customImage || typeMatch || ARTWORK_ASSETS[key]),
   };
 }
 
-function getExhibitionAsset(name) {
+function getArtistAsset(name, imageUrl = null) {
   const key = normalizeLookup(name);
+  const customImage = sanitizeImageUrl(imageUrl);
   return {
-    imagePath: EXHIBITION_ASSETS[key] || PLACEHOLDER_ASSETS.exhibit,
+    imagePath: customImage || ARTIST_ASSETS[key] || PLACEHOLDER_ASSETS.artwork,
+    alt: name ? `${name} artist image.` : "Artist image pending.",
+    isPlaceholder: !(customImage || ARTIST_ASSETS[key]),
+  };
+}
+
+function getExhibitionAsset(name, imageUrl = null) {
+  const key = normalizeLookup(name);
+  const customImage = sanitizeImageUrl(imageUrl);
+  return {
+    imagePath: customImage || EXHIBITION_ASSETS[key] || PLACEHOLDER_ASSETS.exhibit,
     alt: name ? `${name} exhibition image.` : "Exhibition image pending.",
-    isPlaceholder: !EXHIBITION_ASSETS[key],
+    isPlaceholder: !(customImage || EXHIBITION_ASSETS[key]),
   };
 }
 
@@ -202,18 +285,22 @@ function getRoleAsset(role) {
   return ROLE_ASSETS[role] || ROLE_ASSETS.public;
 }
 
-function getGiftShopAsset(name, category) {
+function getGiftShopAsset(name, category, imageUrl = null) {
+  const nameKey = normalizeLookup(name);
   const categoryKey = normalizeLookup(category);
+  const customImage = sanitizeImageUrl(imageUrl);
   return {
-    imagePath: GIFTSHOP_ASSETS[categoryKey] || PLACEHOLDER_ASSETS.giftshop,
+    imagePath: customImage || GIFTSHOP_ITEM_ASSETS[nameKey] || GIFTSHOP_ASSETS[categoryKey] || PLACEHOLDER_ASSETS.giftshop,
     alt: name ? `${name} gift shop item image.` : "Gift shop item placeholder image.",
   };
 }
 
-function getCafeAsset(name, type) {
+function getCafeAsset(name, type, imageUrl = null) {
+  const nameKey = normalizeLookup(name);
   const typeKey = normalizeLookup(type);
+  const customImage = sanitizeImageUrl(imageUrl);
   return {
-    imagePath: CAFE_ASSETS[typeKey] || PLACEHOLDER_ASSETS.cafe,
+    imagePath: customImage || CAFE_ITEM_ASSETS[nameKey] || CAFE_ASSETS[typeKey] || PLACEHOLDER_ASSETS.cafe,
     alt: name ? `${name} cafe item image.` : "Cafe item placeholder image.",
   };
 }
@@ -221,11 +308,9 @@ function getCafeAsset(name, type) {
 function buildNavTabs(user) {
   if (!user) {
     return [
-      { href: "/", label: "Home" },
       { href: "/member-login", label: "Visit" },
       { href: "/member-login", label: "Art" },
       { href: "/member-login", label: "Events" },
-      { href: "/member-signup", label: "Membership" },
       { href: "/staff-login", label: "Staff" },
     ];
   }
@@ -285,6 +370,131 @@ function buildNavTabs(user) {
   }
 }
 
+function getStaffNavGroups(user) {
+  if (!user) {
+    return [];
+  }
+
+  const groupsByRole = {
+    supervisor: [
+      {
+        title: "Dashboard",
+        links: [
+          { href: "/dashboard", label: "Overview", code: "01" },
+          { href: "/reports", label: "Management Reports", code: "02" },
+          { href: "/queries?view=artwork-status#query-tabs", label: "Advanced Queries", code: "03" },
+        ],
+      },
+      {
+        title: "Collections",
+        links: [
+          { href: "/add-artist", label: "Artists", code: "AR" },
+          { href: "/add-artwork", label: "Artwork Records", code: "AW" },
+          { href: "/add-exhibition", label: "Exhibitions", code: "EX" },
+          { href: "/add-exhibition-artwork", label: "Exhibition Assignments", code: "EA" },
+          { href: "/condition-reports", label: "Condition Reports", code: "CR" },
+          { href: "/artwork-loans", label: "Loans", code: "LN" },
+        ],
+      },
+      {
+        title: "Visitor Operations",
+        links: [
+          { href: "/sell-ticket", label: "Admissions Desk", code: "AD" },
+          { href: "/add-membership", label: "Memberships", code: "MB" },
+          { href: "/tours", label: "Guided Tours", code: "TR" },
+          { href: "/add-event", label: "Events", code: "EV" },
+          { href: "/add-event-registration", label: "Event Registrations", code: "RG" },
+        ],
+      },
+      {
+        title: "Commercial",
+        links: [
+          { href: "/add-item", label: "Gift Shop Inventory", code: "GS" },
+          { href: "/add-sale", label: "Gift Shop Sales", code: "SL" },
+          { href: "/add-food", label: "Cafe Inventory", code: "CF" },
+          { href: "/add-food-sale", label: "Cafe Orders", code: "OR" },
+        ],
+      },
+      {
+        title: "Administration",
+        links: [
+          { href: "/add-employee", label: "Staff Directory", code: "ST" },
+          { href: "/add-department", label: "Departments", code: "DP" },
+          { href: "/add-schedule", label: "Schedules", code: "SC" },
+          { href: "/institutions", label: "Institutions", code: "IN" },
+        ],
+      },
+    ],
+    admissions: [
+      {
+        title: "Admissions",
+        links: [
+          { href: "/dashboard", label: "Overview", code: "OV" },
+          { href: "/sell-ticket", label: "Ticket Register", code: "TK" },
+          { href: "/add-membership", label: "Memberships", code: "MB" },
+          { href: "/ticket-sales", label: "Ticket Sales", code: "SL" },
+        ],
+      },
+    ],
+    giftshop: [
+      {
+        title: "Gift Shop",
+        links: [
+          { href: "/dashboard", label: "Overview", code: "OV" },
+          { href: "/gift-order", label: "Shop Floor", code: "POS" },
+          { href: "/add-sale", label: "Sales", code: "SL" },
+          { href: "/add-item", label: "Inventory", code: "IN" },
+        ],
+      },
+    ],
+    cafe: [
+      {
+        title: "Cafe",
+        links: [
+          { href: "/dashboard", label: "Overview", code: "OV" },
+          { href: "/order", label: "Menu Order", code: "POS" },
+          { href: "/add-food-sale", label: "Orders", code: "OR" },
+          { href: "/add-food", label: "Inventory", code: "IN" },
+        ],
+      },
+    ],
+    curator: [
+      {
+        title: "Collection Care",
+        links: [
+          { href: "/dashboard", label: "Overview", code: "OV" },
+          { href: "/queries", label: "Collection Search", code: "SE" },
+          { href: "/add-artist", label: "Artists", code: "AR" },
+          { href: "/add-artwork", label: "Artwork", code: "AW" },
+          { href: "/add-exhibition", label: "Exhibitions", code: "EX" },
+          { href: "/condition-reports", label: "Condition Reports", code: "CR" },
+          { href: "/artwork-loans", label: "Loans", code: "LN" },
+        ],
+      },
+    ],
+    employee: [
+      {
+        title: "Visitor Desk",
+        links: [
+          { href: "/dashboard", label: "Overview", code: "OV" },
+          { href: "/sell-ticket", label: "Ticket Register", code: "TK" },
+          { href: "/add-membership", label: "Memberships", code: "MB" },
+          { href: "/add-event-registration", label: "Event Registrations", code: "EV" },
+        ],
+      },
+      {
+        title: "Sales Counters",
+        links: [
+          { href: "/gift-order", label: "Gift Shop POS", code: "GS" },
+          { href: "/order", label: "Cafe POS", code: "CF" },
+        ],
+      },
+    ],
+  };
+
+  return groupsByRole[user.role] || [];
+}
+
 function renderNavTabs(tabs, currentPath) {
   if (!tabs?.length) {
     return "";
@@ -330,7 +540,10 @@ function renderHero(hero) {
         <video autoplay muted loop playsinline poster="${escapeHtml(hero.posterPath || hero.imagePath || PLACEHOLDER_ASSETS.visit)}">
           <source src="${escapeHtml(hero.videoPath)}" type="video/mp4">
         </video>
-        <button class="hero-media-toggle" type="button" data-hero-video-toggle aria-pressed="false" aria-label="Pause background video">Pause motion</button>
+        <button class="hero-media-toggle" type="button" data-hero-video-toggle aria-pressed="false" aria-label="Pause background video">
+          <span class="hero-media-toggle__icon hero-media-toggle__icon--pause" aria-hidden="true"></span>
+          <span class="hero-media-toggle__icon hero-media-toggle__icon--play" aria-hidden="true"></span>
+        </button>
       </div>
     `
     : `
@@ -344,9 +557,7 @@ function renderHero(hero) {
       <div class="media-hero__details">
         ${hero.details.map((item) => `
           <div class="hero-panel-item">
-            <p class="eyebrow">${escapeHtml(item.label)}</p>
             <h2>${escapeHtml(item.title)}</h2>
-            <p>${escapeHtml(item.description)}</p>
           </div>
         `).join("")}
       </div>
@@ -362,8 +573,7 @@ function renderHero(hero) {
       ${media}
       <div class="media-hero__overlay"></div>
       <div class="media-hero__content">
-        ${hero.eyebrow ? `<p class="eyebrow">${escapeHtml(hero.eyebrow)}</p>` : ""}
-        <h1>${escapeHtml(hero.title)}</h1>
+        <h1 ${hero.typewriter ? `data-typewriter="${escapeHtml(hero.title)}"` : ""}>${escapeHtml(hero.title)}</h1>
         ${hero.description ? `<p class="hero-lead">${escapeHtml(hero.description)}</p>` : ""}
         ${actions}
       </div>
@@ -385,9 +595,8 @@ function renderFeatureCards(cards) {
             <img src="${escapeHtml(card.imagePath || PLACEHOLDER_ASSETS.exhibit)}" alt="${escapeHtml(card.alt || card.title)}">
           </div>
           <div class="feature-card__body">
-            ${card.eyebrow ? `<p class="eyebrow">${escapeHtml(card.eyebrow)}</p>` : ""}
             <h2>${escapeHtml(card.title)}</h2>
-            <p>${escapeHtml(card.description)}</p>
+            ${card.description ? `<p>${escapeHtml(card.description)}</p>` : ""}
             ${card.href ? `<a class="feature-card__link" href="${escapeHtml(card.href)}">${escapeHtml(card.linkLabel || "Learn More")}</a>` : ""}
           </div>
         </article>
@@ -396,7 +605,7 @@ function renderFeatureCards(cards) {
   `;
 }
 
-function renderCarousel({ title, description = "", slides = [] }) {
+function renderCarousel({ title, eyebrow = "", description = "", slides = [] }) {
   if (!slides.length) {
     return "";
   }
@@ -405,31 +614,31 @@ function renderCarousel({ title, description = "", slides = [] }) {
     <section class="card carousel-shell reveal" aria-label="${escapeHtml(title)}">
       <div class="section-header">
         <div>
-          <p class="eyebrow">Featured Pathways</p>
           <h2>${escapeHtml(title)}</h2>
         </div>
         ${description ? `<p class="carousel-shell__lead">${escapeHtml(description)}</p>` : ""}
       </div>
       <div class="carousel" data-carousel>
         <div class="carousel__viewport">
-          ${slides.map((slide, index) => `
-            <article class="carousel__slide ${index === 0 ? "is-active" : ""}" data-carousel-slide ${index === 0 ? "" : "hidden"}>
-              <div class="carousel__media">
-                <img src="${escapeHtml(slide.imagePath || PLACEHOLDER_ASSETS.visit)}" alt="${escapeHtml(slide.alt || slide.title)}">
-              </div>
-              <div class="carousel__body">
-                ${slide.eyebrow ? `<p class="eyebrow">${escapeHtml(slide.eyebrow)}</p>` : ""}
-                <h3>${escapeHtml(slide.title)}</h3>
-                <p>${escapeHtml(slide.description || "")}</p>
-                ${slide.href ? `<a class="button" href="${escapeHtml(slide.href)}">${escapeHtml(slide.linkLabel || "Open")}</a>` : ""}
-              </div>
-            </article>
-          `).join("")}
+          <div class="carousel__track">
+            ${slides.map((slide, index) => `
+              <article class="carousel__slide ${index === 0 ? "is-active" : ""}" data-carousel-slide>
+                <div class="carousel__media">
+                  <img src="${escapeHtml(slide.imagePath || PLACEHOLDER_ASSETS.visit)}" alt="${escapeHtml(slide.alt || slide.title)}">
+                </div>
+                <div class="carousel__body">
+                  <h3>${escapeHtml(slide.title)}</h3>
+                  ${slide.description ? `<p>${escapeHtml(slide.description)}</p>` : ""}
+                  ${slide.href ? `<a class="button" href="${escapeHtml(slide.href)}">${escapeHtml(slide.linkLabel || "Open")}</a>` : ""}
+                </div>
+              </article>
+            `).join("")}
+          </div>
         </div>
         <div class="carousel__controls">
-          <button class="button button-secondary button-small" type="button" data-carousel-prev aria-label="Show previous slide">Previous</button>
+          <button class="carousel__arrow" type="button" data-carousel-prev aria-label="Show previous slide">←</button>
           <div class="carousel__status" data-carousel-status aria-live="polite">1 of ${slides.length}</div>
-          <button class="button button-secondary button-small" type="button" data-carousel-next aria-label="Show next slide">Next</button>
+          <button class="carousel__arrow" type="button" data-carousel-next aria-label="Show next slide">→</button>
         </div>
       </div>
     </section>
@@ -443,11 +652,67 @@ function renderAlertContent(alertContent) {
 
   const items = Array.isArray(alertContent) ? alertContent : [alertContent];
   return items.map((alert) => `
-    <section class="alert-panel alert-panel--${escapeHtml(alert.type || "info")}" role="${alert.type === "error" ? "alert" : "status"}">
-      ${alert.title ? `<h2>${escapeHtml(alert.title)}</h2>` : ""}
-      ${alert.message ? `<p>${escapeHtml(alert.message)}</p>` : ""}
+    <section class="alert-panel alert-panel--${escapeHtml(alert.type || "info")}" role="${alert.type === "error" ? "alert" : "status"}" data-auto-dismiss="6500">
+      <button class="alert-panel__close" type="button" data-dismiss-alert aria-label="Dismiss message">&times;</button>
+      <div>
+        ${alert.title ? `<h2>${escapeHtml(alert.title)}</h2>` : ""}
+        ${alert.message ? `<p>${escapeHtml(alert.message)}</p>` : ""}
+        ${alert.actions?.length ? `
+          <div class="button-row">
+            ${alert.actions.map((action) => `<a class="button ${action.secondary ? "button-secondary" : ""}" href="${escapeHtml(action.href)}">${escapeHtml(action.label)}</a>`).join("")}
+          </div>
+        ` : ""}
+      </div>
     </section>
   `).join("");
+}
+
+function getSupervisorNavGroups() {
+  return getStaffNavGroups({ role: "supervisor" });
+}
+
+function isActiveSupervisorLink(linkHref, currentPath) {
+  const path = String(currentPath || "").split("?")[0] || "/";
+  const linkPath = String(linkHref || "").split("?")[0].split("#")[0] || "/";
+  return path === linkPath;
+}
+
+function renderSupervisorSidebar(user, currentPath = "", openCount = 0) {
+  const roleLabel = getRoleLabel(user) || "Staff";
+  const groups = getStaffNavGroups(user);
+
+  return `
+    <aside class="supervisor-sidebar" aria-label="${escapeHtml(roleLabel)} workspace navigation">
+      <div class="supervisor-sidebar__brand">
+        <div>
+          <p>${escapeHtml(roleLabel)}</p>
+          <strong>${user?.role === "supervisor" ? "Supervisor Command" : "Staff Workspace"}</strong>
+        </div>
+      </div>
+      <nav class="supervisor-sidebar__nav">
+        ${groups.map((group) => `
+          <section>
+            <h2>${escapeHtml(group.title)}</h2>
+            ${group.links.map((link) => {
+              const isActive = isActiveSupervisorLink(link.href, currentPath);
+              return `
+                <a class="${isActive ? "is-active" : ""}" href="${escapeHtml(link.href)}" ${isActive ? 'aria-current="page"' : ""}>
+                  <span aria-hidden="true">${escapeHtml(link.code)}</span>
+                  ${escapeHtml(link.label)}
+                </a>
+              `;
+            }).join("")}
+          </section>
+        `).join("")}
+      </nav>
+      <div class="supervisor-sidebar__footer">
+        <p class="eyebrow">Signed In</p>
+        <strong>${escapeHtml(user?.name || roleLabel)}</strong>
+        ${user?.email ? `<span>${escapeHtml(user.email)}</span>` : ""}
+        <span>${openCount ? `${openCount} open item${openCount === 1 ? "" : "s"}` : `${escapeHtml(roleLabel)} access`}</span>
+      </div>
+    </aside>
+  `;
 }
 
 function renderPage({
@@ -462,17 +727,58 @@ function renderPage({
   alertContent,
   breadcrumbs,
   mainClass = "",
+  showPortalBanner = true,
+  supervisorOpenCount = 0,
 }) {
   const roleLabel = user?.role ? escapeHtml(getRoleLabel(user)) : "";
   const roleTheme = escapeHtml(getRoleTheme(user));
-  const roleSummary = user?.role ? escapeHtml(getRoleSummary(user)) : "";
   const activeTabs = navTabs || buildNavTabs(user);
   const roleAsset = getRoleAsset(user?.role || "public");
+  const isSupervisorPage = user?.role === "supervisor";
+  const isStaffPage = user && ["supervisor", "employee", "admissions", "giftshop", "cafe", "curator"].includes(user.role);
+  const isCustomSupervisorDashboard = mainClass.split(/\s+/).includes("supervisor-dashboard");
+  const effectiveMainClass = isSupervisorPage && !isCustomSupervisorDashboard
+    ? `${mainClass} supervisor-dashboard`.trim()
+    : isStaffPage
+      ? `${mainClass} supervisor-dashboard`.trim()
+    : mainClass;
   const bodyClasses = [`theme-${roleTheme}`];
 
   if (pageTheme) {
     bodyClasses.push(`page-${escapeHtml(pageTheme)}`);
   }
+
+  const alertHtml = renderAlertContent(alertContent);
+  const pageContent = `
+    ${renderBreadcrumbs(breadcrumbs)}
+    ${alertHtml ? `<div class="page-alert-overlay">${alertHtml}</div>` : ""}
+    ${hero ? renderHero(hero) : user && showPortalBanner && !isStaffPage ? `
+      <section class="portal-banner portal-banner--${roleTheme} reveal">
+        <div class="portal-banner__media">
+          <img src="${escapeHtml(roleAsset.imagePath)}" alt="${escapeHtml(roleAsset.alt)}">
+        </div>
+        <div class="portal-banner__content">
+          <div>
+            <h1>${roleLabel}</h1>
+          </div>
+          <a class="button button-secondary button-small" href="/dashboard">Return to Overview</a>
+        </div>
+      </section>
+    ` : ""}
+    ${renderFeatureCards(featureCards)}
+    ${content}
+  `;
+
+  const framedContent = isStaffPage && !isCustomSupervisorDashboard
+    ? `
+      <div class="supervisor-shell supervisor-shell--subpage">
+        ${renderSupervisorSidebar(user, currentPath, supervisorOpenCount)}
+        <div class="supervisor-main supervisor-main--subpage">
+          ${pageContent}
+        </div>
+      </div>
+    `
+    : pageContent;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -485,20 +791,12 @@ function renderPage({
 <body class="${bodyClasses.join(" ")}">
   <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="site-header">
-    <div class="utility-bar">
-      <p>Today's Museum Experience</p>
-      <div class="utility-bar__links">
-        <a href="/">Home</a>
-        ${user ? `<a href="/dashboard">${roleLabel || "Dashboard"}</a>` : '<a href="/member-login">Tickets</a>'}
-        ${!user ? '<a href="/member-signup">Membership</a>' : ""}
-      </div>
-    </div>
     <div class="site-header__inner">
       <a class="brand" href="/">
-        <span class="brand-mark">MFAH</span>
+        <span class="brand-mark"><img src="/images/logo.jpg" alt="" aria-hidden="true"><span>MFAH</span></span>
         <span class="brand-copy">
           <span class="brand-eyebrow">The Museum of Fine Arts, Houston</span>
-          <span class="brand-title">Museum Operations Portal</span>
+          <span class="brand-title">Collections & Operations System</span>
         </span>
       </a>
       <div class="site-header__actions">
@@ -510,27 +808,21 @@ function renderPage({
       </div>
     </div>
   </header>
-  <main id="main-content" class="container ${escapeHtml(mainClass)}">
-    ${renderBreadcrumbs(breadcrumbs)}
-    ${hero ? renderHero(hero) : user ? `
-      <section class="portal-banner portal-banner--${roleTheme} reveal">
-        <div class="portal-banner__media">
-          <img src="${escapeHtml(roleAsset.imagePath)}" alt="${escapeHtml(roleAsset.alt)}">
-        </div>
-        <div class="portal-banner__content">
-          <div>
-            <p class="eyebrow">Current Workspace</p>
-            <h1>${roleLabel}</h1>
-            <p>${roleSummary}</p>
-          </div>
-          <a class="button button-secondary button-small" href="/dashboard">Return to Overview</a>
-        </div>
-      </section>
-    ` : ""}
-    ${renderAlertContent(alertContent)}
-    ${renderFeatureCards(featureCards)}
-    ${content}
+  <main id="main-content" class="container ${escapeHtml(effectiveMainClass)}">
+    ${framedContent}
   </main>
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <p>The Museum of Fine Arts, Houston</p>
+      <div>
+        <span>Collections</span>
+        <span>Exhibitions</span>
+        <span>Admissions</span>
+        <span>Revenue</span>
+      </div>
+    </div>
+  </footer>
+  <button class="back-to-top" type="button" data-back-to-top aria-label="Scroll back to top">↑</button>
   <script src="/app.js"></script>
 </body>
 </html>`;
@@ -610,11 +902,11 @@ function renderPager(req, pageParam, pagination, anchorId, basePath = req.path) 
   };
 
   return `
-    <div class="pagination">
+    <div class="pagination" data-ajax-pagination data-section-id="${escapeHtml(anchorId)}">
       <span class="pagination__summary">Page ${pagination.currentPage} of ${pagination.totalPages} | ${pagination.totalRows} results</span>
       <div class="button-row pagination__actions">
-        ${pagination.currentPage > 1 ? `<a class="button button-secondary button-small" href="${escapeHtml(buildHref(pagination.currentPage - 1))}">Previous</a>` : ""}
-        ${pagination.currentPage < pagination.totalPages ? `<a class="button button-secondary button-small" href="${escapeHtml(buildHref(pagination.currentPage + 1))}">Next</a>` : ""}
+        ${pagination.currentPage > 1 ? `<a class="button button-secondary button-small" data-ajax-page href="${escapeHtml(buildHref(pagination.currentPage - 1))}">Previous</a>` : ""}
+        ${pagination.currentPage < pagination.totalPages ? `<a class="button button-secondary button-small" data-ajax-page href="${escapeHtml(buildHref(pagination.currentPage + 1))}">Next</a>` : ""}
       </div>
     </div>
   `;
@@ -692,12 +984,16 @@ module.exports = {
   getRoleLabel,
   getRoleTheme,
   getRoleSummary,
+  getSupervisorNavGroups,
   getArtworkAsset,
+  getArtistAsset,
   getExhibitionAsset,
   getRoleAsset,
   getGiftShopAsset,
   getCafeAsset,
+  sanitizeImageUrl,
   renderCarousel,
+  renderSupervisorSidebar,
   requireLogin,
   setFlash,
   allowRoles,

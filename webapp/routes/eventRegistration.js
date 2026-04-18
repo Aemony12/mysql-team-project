@@ -15,7 +15,7 @@ const {
   logTriggerViolation
 } = require("../helpers");
 
-function renderEventBrowseCards(events, membershipActive, hasTicket) {
+function renderEventBrowseCards(events, membershipActive, hasTicket, hasMembership) {
   if (!events.length) {
     return '<div class="empty-state"><p>No upcoming events available.</p></div>';
   }
@@ -23,44 +23,70 @@ function renderEventBrowseCards(events, membershipActive, hasTicket) {
   return `
     <div class="feature-grid">
       ${events.map((ev) => {
-        const asset = getExhibitionAsset(ev.event_Name);
-        const spotsLeft = ev.Max_capacity - ev.Registered_Count;
+        const asset = getExhibitionAsset(ev.event_Name, ev.Image_URL);
+        const capacity = Number(ev.Max_capacity) || 0;
+        const registeredCount = Number(ev.Registered_Count) || 0;
+        const spotsLeft = Math.max(capacity - registeredCount, 0);
+        const capacityPercent = capacity > 0 ? Math.min(Math.round((registeredCount / capacity) * 100), 100) : 0;
+        const capacityLevel = capacityPercent >= 100
+          ? "full"
+          : capacityPercent >= 80
+          ? "high"
+          : capacityPercent >= 50
+          ? "medium"
+          : "low";
         const isFull = spotsLeft <= 0;
         const isRegistered = ev.Already_Registered > 0;
         let status = '<span class="status-badge status-badge--success">Open</span>';
         if (isRegistered) status = '<span class="status-badge status-badge--success">Registered</span>';
         else if (isFull) status = '<span class="status-badge status-badge--danger">Sold Out</span>';
+        else if (!hasMembership) status = '<span class="status-badge status-badge--warning">Membership Required</span>';
         else if (!membershipActive) status = '<span class="status-badge status-badge--warning">Membership Inactive</span>';
         else if (!hasTicket) status = '<span class="status-badge status-badge--warning">Ticket Required</span>';
 
         const action = isRegistered
-          ? '<p class="section-lead">You are already registered for this event.</p>'
+          ? '<span class="button button-secondary event-card__action-button">Registered</span>'
           : isFull
-          ? '<p class="section-lead">This event has reached capacity.</p>'
+          ? '<span class="button button-secondary event-card__action-button">Sold Out</span>'
+          : !hasMembership
+          ? '<a class="button event-card__action-button" href="/purchase-membership">Join First</a>'
           : !membershipActive
-          ? '<p class="section-lead">Renew membership before registering.</p>'
+          ? '<a class="button event-card__action-button" href="/purchase-membership">Renew Membership</a>'
           : !hasTicket
-          ? '<a class="button button-secondary" href="/purchase-ticket">Buy Ticket First</a>'
+          ? '<a class="button button-secondary event-card__action-button" href="/purchase-ticket">Buy Ticket First</a>'
           : `
             <form method="post" action="/event-register">
               <input type="hidden" name="event_id" value="${ev.event_ID}">
-              <button class="button" type="submit">Register</button>
+              <button class="button event-card__action-button" type="submit">Register</button>
             </form>
           `;
 
         return `
           <article class="feature-card">
             <div class="feature-card__media"><img src="${asset.imagePath}" alt="${asset.alt}"></div>
-            <div class="feature-card__body">
-              <p class="eyebrow">${ev.member_only ? "Members Only" : "Museum Program"}</p>
-              <h2>${escapeHtml(ev.event_Name)}</h2>
-              <p>${formatDisplayDate(ev.start_Date)}${ev.start_Date !== ev.end_Date ? ` to ${formatDisplayDate(ev.end_Date)}` : ""}</p>
-              <div class="collection-card__meta">
-                ${status}
-                <span class="status-badge status-badge--neutral">${spotsLeft > 0 ? `${spotsLeft} left` : "0 left"}</span>
+            <div class="feature-card__body event-card__body">
+              <div class="event-card__content">
+                <p class="eyebrow">${ev.member_only ? "Members Only" : "Museum Program"}</p>
+                <h2>${escapeHtml(ev.event_Name)}</h2>
+                <div class="collection-card__meta">
+                  ${status}
+                  <span class="status-badge status-badge--neutral">${spotsLeft > 0 ? `${spotsLeft} left` : "0 left"}</span>
+                </div>
+                <dl class="event-card__facts">
+                  <div><dt>Date</dt><dd>${formatDisplayDate(ev.start_Date)}${ev.start_Date !== ev.end_Date ? ` to ${formatDisplayDate(ev.end_Date)}` : ""}</dd></div>
+                  <div><dt>Coordinator</dt><dd>${escapeHtml(ev.Coordinator_Name || "TBD")}</dd></div>
+                </dl>
               </div>
-              <p>Coordinator: ${escapeHtml(ev.Coordinator_Name || "TBD")}</p>
-              ${action}
+              <div class="event-card__action">${action}</div>
+              <div class="event-capacity event-capacity--${capacityLevel}" aria-label="${registeredCount} of ${capacity} registered">
+                <div class="event-capacity__summary">
+                  <span>Capacity</span>
+                  <strong>${registeredCount} / ${capacity}</strong>
+                </div>
+                <div class="event-capacity__track" role="progressbar" aria-valuemin="0" aria-valuemax="${capacity}" aria-valuenow="${registeredCount}">
+                  <span style="width: ${capacityPercent}%"></span>
+                </div>
+              </div>
             </div>
           </article>
         `;
@@ -163,7 +189,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
             <label>Registration Date
               <input type="date" name="registration_date" value="${editReg ? formatDateInput(editReg.Registration_Date) : ""}" required>
             </label>
-            <button class="button" type="submit">${editReg ? "Update Registration" : "Add Registration"}</button>
+            <button class="button" type="submit">${editReg ? "Save Registration" : "Create Registration"}</button>
           </form>
         </section>
         <section class="card narrow">
@@ -211,7 +237,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
          WHERE Event_Registration_ID = ?`,
         [eventId, membershipId, ticketId, registrationDate, id]
       );
-      setFlash(req, "Registration updated successfully.");
+      setFlash(req, "Event registration updated.");
     } else {
       try {
         await pool.query(
@@ -219,7 +245,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
            VALUES (?, ?, ?, ?)`,
           [eventId, membershipId, ticketId, registrationDate]
         );
-        setFlash(req, "Registration added successfully.");
+        setFlash(req, "Event registration created.");
       } catch (err) {
         if (err.sqlState === "45000") {
           await logTriggerViolation(pool, req, err.sqlMessage);
@@ -237,7 +263,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
     const idToDelete = req.body.registration_id;
 
     if (!idToDelete) {
-      setFlash(req, "Error: No registration ID provided.");
+      setFlash(req, "Select a registration record before deleting.");
       return res.redirect("/add-event-registration");
     }
 
@@ -245,23 +271,30 @@ function registerEventRegistrationRoutes(app, { pool }) {
       "DELETE FROM event_registration WHERE Event_Registration_ID = ?",
       [idToDelete]
     );
-    setFlash(req, "Registration deleted successfully.");
+    setFlash(req, "Event registration deleted.");
     res.redirect("/add-event-registration");
   }));
 
   app.get("/event-register", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
-    const membershipId = req.session.user.membershipId;
-
-    if (!membershipId) {
-      setFlash(req, "No membership found for your account.");
-      return res.redirect("/dashboard");
-    }
-
-    const [[memberInfo]] = await pool.query(
-      "SELECT Status FROM Membership WHERE Membership_ID = ?",
-      [membershipId]
+    const [eventImageColumns] = await pool.query(
+      `SELECT 1
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'Event'
+         AND COLUMN_NAME = 'Image_URL'
+       LIMIT 1`
     );
+    const hasEventImageColumn = eventImageColumns.length > 0;
+    const membershipId = req.session.user.membershipId;
+    let memberInfo = null;
+    if (membershipId) {
+      [[memberInfo]] = await pool.query(
+        "SELECT Status FROM Membership WHERE Membership_ID = ?",
+        [membershipId]
+      );
+    }
     const membershipActive = memberInfo?.Status === "Active";
+    const hasMembership = Boolean(memberInfo);
 
     const [upcomingEvents] = await pool.query(`
       SELECT
@@ -271,6 +304,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
         ev.end_Date,
         ev.member_only,
         ev.Max_capacity,
+        ${hasEventImageColumn ? "ev.Image_URL" : "NULL"} AS Image_URL,
         CONCAT(e.First_Name, ' ', e.Last_Name) AS Coordinator_Name,
         COUNT(er.Event_Registration_ID) AS Registered_Count,
         (SELECT COUNT(*) FROM event_registration er2
@@ -280,23 +314,26 @@ function registerEventRegistrationRoutes(app, { pool }) {
       LEFT JOIN event_registration er ON er.Event_ID = ev.event_ID
       WHERE ev.end_Date >= CURDATE()
       GROUP BY ev.event_ID, ev.event_Name, ev.start_Date, ev.end_Date,
-               ev.member_only, ev.Max_capacity, e.First_Name, e.Last_Name
+               ev.member_only, ev.Max_capacity, ${hasEventImageColumn ? "ev.Image_URL," : ""} e.First_Name, e.Last_Name
       ORDER BY ev.start_Date ASC
-    `, [membershipId]);
+    `, [membershipId || 0]);
 
-    const [myRegistrations] = await pool.query(`
+    const [myRegistrations] = membershipId ? await pool.query(`
       SELECT er.Event_Registration_ID, er.Registration_Date,
              ev.event_Name, ev.start_Date, ev.end_Date
       FROM event_registration er
       JOIN Event ev ON er.Event_ID = ev.event_ID
       WHERE er.Membership_ID = ?
       ORDER BY ev.start_Date DESC
-    `, [membershipId]);
+    `, [membershipId]) : [[]];
 
-    const [[ticketCheck]] = await pool.query(
-      `SELECT Ticket_ID FROM Ticket WHERE Membership_ID = ? ORDER BY Ticket_ID DESC LIMIT 1`,
-      [membershipId]
-    );
+    let ticketCheck = null;
+    if (membershipId) {
+      [[ticketCheck]] = await pool.query(
+        `SELECT Ticket_ID FROM Ticket WHERE Membership_ID = ? ORDER BY Ticket_ID DESC LIMIT 1`,
+        [membershipId]
+      );
+    }
     const hasTicket = !!ticketCheck;
 
     const myRows = myRegistrations.map((r) => `
@@ -321,8 +358,8 @@ function registerEventRegistrationRoutes(app, { pool }) {
       currentPath: req.path,
       hero: {
         eyebrow: "Member Events",
-        title: "Programs, lectures, and special museum moments",
-        description: "Upcoming events now appear as browseable cards with clearer availability, member access, and ticket requirements.",
+        title: "Events",
+        description: "",
         imagePath: "/images/spring-exhibition-opening-gala.jpg",
         alt: "Museum event scene.",
         actions: [
@@ -331,21 +368,25 @@ function registerEventRegistrationRoutes(app, { pool }) {
         ],
       },
       alertContent: !membershipActive
-        ? { type: "warning", title: "Membership inactive", message: `Your membership is ${memberInfo?.Status ?? "inactive"}. Renew before registering for events.` }
+        ? {
+            type: "warning",
+            title: hasMembership ? "Membership inactive" : "Membership required",
+            message: hasMembership
+              ? `Your membership is ${memberInfo.Status}. Renew before registering for events.`
+              : "Join or restore membership to register for events.",
+            actions: [{ href: "/purchase-membership", label: hasMembership ? "Open Membership" : "Join" }],
+          }
         : !hasTicket
-        ? { type: "info", title: "Admission ticket required", message: "You need an admission ticket on file before you can register for museum events." }
+        ? { type: "info", title: "Admission ticket required", message: "Buy admission before registering for museum events.", actions: [{ href: "/purchase-ticket", label: "Buy Ticket" }] }
         : null,
       content: `
         <section class="card" id="upcoming-events">
-          <p class="eyebrow">Upcoming Events</p>
-          <h2>Choose an event</h2>
-          <p class="section-lead">Availability, access, and next steps are visible on each card instead of hidden in a wide table.</p>
+          <h2>Events</h2>
           ${renderFlash(req)}
-          ${renderEventBrowseCards(upcomingEvents, membershipActive, hasTicket)}
+          ${renderEventBrowseCards(upcomingEvents, membershipActive, hasTicket, hasMembership)}
         </section>
         <section class="card">
-          <p class="eyebrow">My Registrations</p>
-          <h2>Registered programs</h2>
+          <h2>My Events</h2>
           <table>
             <thead>
               <tr>
@@ -370,7 +411,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
     const membershipId = req.session.user.membershipId;
 
     if (!eventId || !membershipId) {
-      setFlash(req, "Invalid request.");
+      setFlash(req, "Select an event before registering.");
       return res.redirect("/event-register");
     }
 
@@ -380,7 +421,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
     );
     if (!memberStatus || memberStatus.Status !== "Active") {
       const status = memberStatus?.Status ?? "unknown";
-      setFlash(req, `Your membership is ${status}. Please visit the admissions desk to renew before registering for events.`);
+      setFlash(req, `Your membership is ${status}. Renew at the admissions desk before registering for events.`);
       return res.redirect("/event-register");
     }
 
@@ -400,7 +441,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
          VALUES (?, ?, ?, CURDATE())`,
         [eventId, membershipId, latestTicket.Ticket_ID]
       );
-      setFlash(req, "You are registered for the event!");
+      setFlash(req, "Event registration confirmed.");
     } catch (err) {
       if (err.code === "ER_DUP_ENTRY") {
         setFlash(req, "You are already registered for this event.");

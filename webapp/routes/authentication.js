@@ -17,7 +17,6 @@ function renderLoginPage({ req, title, eyebrow, heading, intro, action, secondar
     content: `
       <section class="card auth-card auth-shell">
         <div class="auth-panel">
-          <p class="eyebrow">${eyebrow}</p>
           <h1>${heading}</h1>
           <p class="auth-intro">${intro}</p>
           ${renderFlash(req)}
@@ -30,14 +29,22 @@ function renderLoginPage({ req, title, eyebrow, heading, intro, action, secondar
             <button class="button" type="submit" form="login-form">${action}</button>
             ${secondaryLink}
           </div>
+          ${hiddenAudience === "staff" ? `
+            <div class="staff-access-list" aria-label="Staff role access">
+              <span>Admissions: tickets and memberships</span>
+              <span>Gift shop: POS and inventory</span>
+              <span>Café: orders and menu stock</span>
+              <span>Curators: collection records</span>
+              <span>Supervisors: reports and alerts</span>
+            </div>
+          ` : ""}
         </div>
         <aside class="auth-media">
           <img src="${imagePath}" alt="${mediaTitle}">
           <div class="auth-media__overlay"></div>
           <div class="auth-media__content">
-            <p class="eyebrow">${eyebrow}</p>
             <h2>${mediaTitle}</h2>
-            <p>${mediaCopy}</p>
+            ${mediaCopy ? `<p>${mediaCopy}</p>` : ""}
           </div>
         </aside>
       </section>
@@ -52,91 +59,54 @@ function registerAuthenticationRoutes(app, { pool }) {
       title: "The Museum of Fine Arts, Houston",
       user: req.session.user,
       currentPath: req.path,
+      pageTheme: "home",
       hero: {
-        eyebrow: "Museum Visit Planning",
-        title: "A clearer museum experience for members, staff, and supervisors.",
-        description: "Explore tickets, collections, events, memberships, and operational workspaces through a layout modeled after the MFAH site instead of walls of buttons.",
+        eyebrow: "The Museum of Fine Arts, Houston",
+        title: "MFAH",
+        typewriter: true,
+        description: "Art lives here.",
         videoPath: "/images/homepage-museum-video.mp4",
         posterPath: visitAsset.imagePath,
         actions: req.session.user ? [
           { href: "/dashboard", label: "Open Overview" },
         ] : [
-          { href: "/member-login", label: "Plan Your Visit" },
+          { href: "/member-login", label: "Member Access" },
           { href: "/staff-login", label: "Staff Login", secondary: true },
         ],
         details: [
-          { label: "Visit", title: "Tickets and Membership", description: "Guide first-time visitors with obvious next steps for admission, tours, and account access." },
-          { label: "Art", title: "Collection Search", description: "Browse artworks and exhibitions with imagery, stronger labels, and museum-style framing." },
-          { label: "Operations", title: "Role-Based Workspaces", description: "Admissions, retail, cafe, curatorial, and supervisor areas now feel distinct." },
+          { label: "Visit", title: "Admission", description: "Tickets and member access." },
+          { label: "Collection", title: "Galleries", description: "Artworks and exhibitions." },
+          { label: "Operations", title: "Staff", description: "Museum workspaces." },
         ],
       },
-      featureCards: [
-        {
-          eyebrow: "Visit",
-          title: "Admission and Membership",
-          description: "Buy tickets, review member benefits, and plan a clear museum visit experience.",
-          href: req.session.user ? "/purchase-ticket" : "/member-login",
-          linkLabel: "Plan Your Visit",
-          imagePath: "/images/summer-showcase.jpg",
-          alt: "Visitors entering a museum exhibition.",
-        },
-        {
-          eyebrow: "Art",
-          title: "Explore the Collection",
-          description: "Search artworks, exhibitions, and collection status using an image-led gallery layout.",
-          href: req.session.user ? "/queries" : "/member-login",
-          linkLabel: "Explore Art",
-          imagePath: "/images/the-farnese-hours.jpg",
-          alt: "Historic illuminated artwork from the collection.",
-        },
-        {
-          eyebrow: "Events",
-          title: "Tours and Programs",
-          description: "Browse guided tours, museum programs, and special events without confusing tables as the first impression.",
-          href: req.session.user ? "/event-register" : "/member-login",
-          linkLabel: "View Events",
-          imagePath: "/images/spring-exhibition-opening-gala.jpg",
-          alt: "Museum event gathering.",
-        },
-        {
-          eyebrow: "Access",
-          title: "Choose the Right Entrance",
-          description: "Members and staff now use separate, clearly labeled entry points with role-specific guidance.",
-          href: "/staff-login",
-          linkLabel: "Open Login Options",
-          imagePath: "/images/spring-collection.jpg",
-          alt: "Museum interior with visitors.",
-        },
-      ],
       content: `
         ${renderCarousel({
-          title: "Move through the site with clearer next steps",
-          description: "This carousel adds a guided path without changing the existing museum-style layout.",
+          title: "Pathways",
           slides: [
             {
               eyebrow: "Visit",
-              title: "Buy admission and check membership status",
-              description: "Start with tickets, then renew membership directly from the visit planning page if pricing is locked.",
+              title: "Tickets",
+              description: "Admission, member pricing, tours, and events in one place.",
               href: req.session.user ? "/purchase-ticket" : "/member-login",
-              linkLabel: "Open Visit Planning",
+              linkLabel: "Plan Visit",
               imagePath: "/images/summer-showcase.jpg",
               alt: "Visitors approaching a museum experience.",
             },
             {
               eyebrow: "Art",
-              title: "Open the artwork status view first",
-              description: "Collection browsing now lands on the artwork status tab instead of a generic wall of search tools.",
+              title: "Collection",
+              description: "Search artworks, artists, exhibitions, and collection records.",
               href: req.session.user ? "/queries?view=artwork-status#query-tabs" : "/member-login",
-              linkLabel: "View Artwork",
+              linkLabel: "Search Collection",
               imagePath: "/images/the-farnese-hours.jpg",
               alt: "Collection artwork and exhibition materials.",
             },
             {
               eyebrow: "Operations",
-              title: "Reach the right workspace by role",
-              description: "Supervisors, curators, admissions, retail, and cafe staff all keep their existing routes but with clearer entry points.",
+              title: "Staff",
+              description: "Role-based tools for the museum team.",
               href: "/staff-login",
-              linkLabel: "Open Staff Login",
+              linkLabel: "Staff Login",
               imagePath: "/images/spring-exhibition-opening-gala.jpg",
               alt: "Museum staff and event operations.",
             },
@@ -145,29 +115,46 @@ function registerAuthenticationRoutes(app, { pool }) {
         <section class="card">
           <div class="section-header">
             <div>
-              <p class="eyebrow">Choose Your Portal</p>
-              <h2>Start from the page that matches your role.</h2>
+              <h2>Access</h2>
             </div>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <div class="feature-card__media"><img src="/images/summer-showcase.jpg" alt="Member visit planning area."></div>
               <div class="feature-card__body">
-                <p class="eyebrow">Members</p>
-                <h2>Tickets, Tours, and Events</h2>
-                <p>Use the member portal to buy admission, register for events, and explore the museum collection.</p>
+                <h2>Member Access</h2>
+                <p>Tickets, tours, events, and membership.</p>
                 <a class="feature-card__link" href="/member-login">Member Login</a>
               </div>
             </article>
             <article class="feature-card">
-              <div class="feature-card__media"><img src="/images/spring-exhibition-opening-gala.jpg" alt="Museum staff and operations area."></div>
+              <div class="feature-card__media"><img src="/images/museum4.jpg" alt="Museum staff and operations area."></div>
               <div class="feature-card__body">
-                <p class="eyebrow">Staff</p>
-                <h2>Operations and Oversight</h2>
-                <p>Admissions, gift shop, cafe, curatorial, and supervisor workspaces now use clearer navigation and stronger visual hierarchy.</p>
+                <h2>Staff Access</h2>
+                <p>Admissions, retail, cafe, curatorial, and reporting.</p>
                 <a class="feature-card__link" href="/staff-login">Staff Login</a>
               </div>
             </article>
+          </div>
+        </section>
+        <section class="home-collection-search" id="home-collection-search">
+          <div class="home-collection-collage" aria-hidden="true">
+            <img src="/images/the-farnese-hours.jpg" alt="">
+            <img src="/images/allegory.jpg" alt="">
+            <img src="/images/van-gogh.jpg" alt="">
+            <img src="/images/claude-monet.jpg" alt="">
+            <img src="/images/Jean-Auguste-Dominique-Ingres.jpg" alt="">
+            <img src="/images/the-rose-garden.jpg" alt="">
+          </div>
+          <div class="home-collection-search__content">
+            <h2>Collection</h2>
+            <p>Search the collection by artwork, artist, style, type, or period.</p>
+            <form method="get" action="/queries" class="home-collection-search__form">
+              <input type="hidden" name="view" value="artwork-search">
+              <label class="sr-only" for="home-collection-query">Search collection</label>
+              <input id="home-collection-query" type="search" name="title" placeholder="Search artworks, artists, and periods">
+              <button class="button" type="submit">Search Collection</button>
+            </form>
           </div>
         </section>
       `,
@@ -186,12 +173,12 @@ function registerAuthenticationRoutes(app, { pool }) {
       title: "Staff Login",
       eyebrow: "Staff Access",
       heading: "Staff Login",
-      intro: "Use staff credentials to enter admissions, retail, cafe, curatorial, or supervisor workspaces.",
+      intro: "Sign in with staff credentials.",
       action: "Sign In",
-      secondaryLink: '<a class="button button-secondary" href="/">Back to Home</a>',
+      secondaryLink: '<a class="button button-secondary" href="/">Return Home</a>',
       hiddenAudience: "staff",
-      mediaTitle: "Distinct workspaces for each museum role.",
-      mediaCopy: "Admissions focuses on tickets, gift shop on products, cafe on orders, and supervisors on alerts and oversight. The entry point should make that obvious.",
+      mediaTitle: "Staff Access",
+      mediaCopy: "",
       imagePath: getRoleAsset("supervisor").imagePath,
     }));
   });
@@ -206,13 +193,13 @@ function registerAuthenticationRoutes(app, { pool }) {
       title: "Member Login",
       eyebrow: "Member Access",
       heading: "Member Login",
-      intro: "Use your member account to buy tickets, browse tours, register for events, and manage your museum visit.",
+      intro: "Sign in for tickets, tours, and events.",
       action: "Enter Member Portal",
       secondaryLink: '<a class="button button-secondary" href="/member-signup">Create Member Account</a>',
       hiddenAudience: "member",
-      mediaTitle: "Plan your visit with museum-style guidance.",
-      mediaCopy: "The member side centers on admission, exhibitions, tours, and upcoming programs instead of technical forms.",
-      imagePath: getRoleAsset("user").imagePath,
+      mediaTitle: "Member Access",
+      mediaCopy: "",
+      imagePath: "/images/museum3.jpg",
     }));
   });
 
@@ -230,9 +217,8 @@ function registerAuthenticationRoutes(app, { pool }) {
       content: `
         <section class="card auth-card auth-shell">
           <div class="auth-panel">
-            <p class="eyebrow">Member Access</p>
             <h1>Create a Member Account</h1>
-            <p class="auth-intro">Start with a guided museum account for tickets, tours, events, and membership access.</p>
+            <p class="auth-intro">Tickets, tours, events, and membership.</p>
             ${renderFlash(req)}
             <form id="signup-form" method="post" action="/signup" class="form-grid">
               <label>First Name<input type="text" name="first_name" required autocomplete="given-name"></label>
@@ -250,9 +236,7 @@ function registerAuthenticationRoutes(app, { pool }) {
             <img src="/images/spring-collection.jpg" alt="Museum membership sign up experience.">
             <div class="auth-media__overlay"></div>
             <div class="auth-media__content">
-              <p class="eyebrow">Membership</p>
-              <h2>Use one account for admission, tours, and events.</h2>
-              <p>Sign-up should feel like the beginning of a museum visit, not a database worksheet.</p>
+              <h2>Membership</h2>
             </div>
           </aside>
         </section>
@@ -285,7 +269,7 @@ function registerAuthenticationRoutes(app, { pool }) {
     }
 
     if (audience === "staff" && isMember) {
-      setFlash(req, "This login page is for staff only.");
+      setFlash(req, "Staff members should use the staff login page.");
       return res.redirect("/staff-login");
     }
 
@@ -309,7 +293,7 @@ function registerAuthenticationRoutes(app, { pool }) {
     const password = req.body.password?.trim();
 
     if (!firstName || !lastName || !email || !password) {
-      setFlash(req, "Please fill in all required fields.");
+      setFlash(req, "Complete all required fields.");
       return res.redirect("/member-signup");
     }
 
@@ -323,38 +307,22 @@ function registerAuthenticationRoutes(app, { pool }) {
       return res.redirect("/member-signup");
     }
 
-    const connection = await pool.getConnection();
-
     try {
-      await connection.beginTransaction();
-
-      const [membershipResult] = await connection.query(
-        `INSERT INTO Membership (First_Name, Last_Name, Email, Phone_Number, Date_Joined)
-         VALUES (?, ?, ?, ?, CURRENT_DATE)`,
-        [firstName, lastName, email, phone || null],
-      );
-
-      await connection.query(
+      await pool.query(
         `INSERT INTO users (name, email, password, role, is_active, membership_id)
-         VALUES (?, ?, ?, 'user', TRUE, ?)`,
-        [`${firstName} ${lastName}`, email, password, membershipResult.insertId],
+         VALUES (?, ?, ?, 'user', TRUE, NULL)`,
+        [`${firstName} ${lastName}`, email, password],
       );
-
-      await connection.commit();
     } catch (error) {
-      await connection.rollback();
-
       if (error && error.code === "ER_DUP_ENTRY") {
         setFlash(req, "An account with that email already exists.");
         return res.redirect("/member-signup");
       }
 
       throw error;
-    } finally {
-      connection.release();
     }
 
-    setFlash(req, "Account created. Please log in.");
+    setFlash(req, "Account created. Sign in to continue.");
     res.redirect("/member-login");
   }));
 

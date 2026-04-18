@@ -11,7 +11,7 @@ const {
   logTriggerViolation
 } = require("../helpers");
 
-function renderTourCards(tours, membershipActive) {
+function renderTourCards(tours, membershipActive, hasMembership) {
   if (!tours.length) {
     return '<div class="empty-state"><p>No upcoming tours available.</p></div>';
   }
@@ -26,26 +26,43 @@ function renderTourCards(tours, membershipActive) {
         let status = '<span class="status-badge status-badge--success">Open</span>';
         if (isRegistered) status = '<span class="status-badge status-badge--success">Registered</span>';
         else if (isFull) status = '<span class="status-badge status-badge--danger">Full</span>';
+        else if (!hasMembership) status = '<span class="status-badge status-badge--warning">Membership Required</span>';
         else if (!membershipActive) status = '<span class="status-badge status-badge--warning">Membership Inactive</span>';
+
+        const action = isRegistered
+          ? '<span class="button button-secondary event-card__action-button">Registered</span>'
+          : isFull
+          ? '<span class="button button-secondary event-card__action-button">Full</span>'
+          : !hasMembership
+          ? '<a class="button event-card__action-button" href="/purchase-membership">Join First</a>'
+          : !membershipActive
+          ? '<a class="button event-card__action-button" href="/purchase-membership">Renew Membership</a>'
+          : `
+            <form method="post" action="/tour-register">
+              <input type="hidden" name="tour_id" value="${tour.Tour_ID}">
+              <button class="button event-card__action-button" type="submit">Register</button>
+            </form>
+          `;
 
         return `
           <article class="feature-card">
             <div class="feature-card__media"><img src="${asset.imagePath}" alt="${asset.alt}"></div>
-            <div class="feature-card__body">
-              <p class="eyebrow">${escapeHtml(tour.Language)} Tour</p>
-              <h2>${escapeHtml(tour.Tour_Name)}</h2>
-              <div class="collection-card__meta">
-                ${status}
-                <span class="status-badge status-badge--neutral">${spotsLeft > 0 ? `${spotsLeft} left` : "0 left"}</span>
+            <div class="feature-card__body event-card__body">
+              <div class="event-card__content">
+                <p class="eyebrow">${escapeHtml(tour.Language)} Tour</p>
+                <h2>${escapeHtml(tour.Tour_Name)}</h2>
+                <div class="collection-card__meta">
+                  ${status}
+                  <span class="status-badge status-badge--neutral">${spotsLeft > 0 ? `${spotsLeft} left` : "0 left"}</span>
+                </div>
+                <dl class="event-card__facts">
+                  <div><dt>Date</dt><dd>${formatDisplayDate(tour.Tour_Date)}</dd></div>
+                  <div><dt>Time</dt><dd>${escapeHtml(String(tour.Start_Time))} - ${escapeHtml(String(tour.End_Time))}</dd></div>
+                  <div><dt>Guide</dt><dd>${escapeHtml(tour.Guide_Name || "TBD")}</dd></div>
+                  <div><dt>Exhibition</dt><dd>${escapeHtml(tour.Exhibition_Name || "General")}</dd></div>
+                </dl>
               </div>
-              <p>${formatDisplayDate(tour.Tour_Date)} | ${escapeHtml(String(tour.Start_Time))} - ${escapeHtml(String(tour.End_Time))}</p>
-              <p>Guide: ${escapeHtml(tour.Guide_Name || "TBD")} | Exhibition: ${escapeHtml(tour.Exhibition_Name || "General")}</p>
-              ${isRegistered ? '<p class="section-lead">You are already registered.</p>' : isFull ? '<p class="section-lead">This tour is full.</p>' : !membershipActive ? '<p class="section-lead">Renew your membership to register.</p>' : `
-                <form method="post" action="/tour-register">
-                  <input type="hidden" name="tour_id" value="${tour.Tour_ID}">
-                  <button class="button" type="submit">Register</button>
-                </form>
-              `}
+              <div class="event-card__action">${action}</div>
             </div>
           </article>
         `;
@@ -116,15 +133,14 @@ function registerToursRoutes(app, { pool }) {
       currentPath: req.path,
       hero: {
         eyebrow: "Supervisor Tours",
-        title: "Schedule guided tours and review attendance",
-        description: "This view now separates tour planning from rosters and highlights capacity more clearly for managers.",
+        title: "Tours",
+        description: "",
         imagePath: "/images/spring-collection.jpg",
         alt: "Museum guided tour planning view.",
       },
       content: `
         <section class="card narrow">
-          <p class="eyebrow">Collections Management</p>
-          <h2>Schedule a Guided Tour</h2>
+          <h2>Guided Tours</h2>
           ${renderFlash(req)}
           <form method="post" action="/tours" class="form-grid">
             <label>Tour Name
@@ -220,7 +236,7 @@ function registerToursRoutes(app, { pool }) {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())`,
         [tourName.trim(), tourDate, startTime, endTime, maxCapacity, guideId || null, exhibitionId || null, language || "English"]
       );
-      setFlash(req, "Tour scheduled successfully.");
+      setFlash(req, "Tour scheduled.");
     } catch (err) {
       if (err.sqlState === "45000") {
         await logTriggerViolation(pool, req, err.sqlMessage);
@@ -300,7 +316,6 @@ function registerToursRoutes(app, { pool }) {
       currentPath: req.path,
       content: `
         <section class="card narrow">
-          <p class="eyebrow">Tour Roster</p>
           <h1>${escapeHtml(tour.Tour_Name)}</h1>
           <dl class="dashboard-details">
             <div class="detail-item"><dt>Date</dt><dd>${formatDisplayDate(tour.Tour_Date)}</dd></div>
@@ -346,17 +361,15 @@ function registerToursRoutes(app, { pool }) {
 
   app.get("/tour-register", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
     const membershipId = req.session.user.membershipId;
-
-    if (!membershipId) {
-      setFlash(req, "No membership found for your account.");
-      return res.redirect("/dashboard");
+    let memberInfo = null;
+    if (membershipId) {
+      [[memberInfo]] = await pool.query(
+        "SELECT Status FROM Membership WHERE Membership_ID = ?",
+        [membershipId]
+      );
     }
-
-    const [[memberInfo]] = await pool.query(
-      "SELECT Status FROM Membership WHERE Membership_ID = ?",
-      [membershipId]
-    );
     const membershipActive = memberInfo?.Status === "Active";
+    const hasMembership = Boolean(memberInfo);
 
     const [upcomingTours] = await pool.query(`
       SELECT
@@ -377,9 +390,9 @@ function registerToursRoutes(app, { pool }) {
       LEFT JOIN Exhibition EX ON T.Exhibition_ID = EX.Exhibition_ID
       WHERE T.Tour_Date >= CURDATE()
       ORDER BY T.Tour_Date, T.Start_Time
-    `, [membershipId]);
+    `, [membershipId || 0]);
 
-    const [myRegistrations] = await pool.query(`
+    const [myRegistrations] = membershipId ? await pool.query(`
       SELECT TR.Tour_Registration_ID, TR.Registration_Date,
              T.Tour_Name, T.Tour_Date, T.Start_Time,
              EX.Exhibition_Name
@@ -388,7 +401,7 @@ function registerToursRoutes(app, { pool }) {
       LEFT JOIN Exhibition EX ON T.Exhibition_ID = EX.Exhibition_ID
       WHERE TR.Membership_ID = ?
       ORDER BY T.Tour_Date
-    `, [membershipId]);
+    `, [membershipId]) : [[]];
 
     const myRows = myRegistrations.map((r) => `
       <tr>
@@ -413,8 +426,8 @@ function registerToursRoutes(app, { pool }) {
       currentPath: req.path,
       hero: {
         eyebrow: "Guided Tours",
-        title: "Browse upcoming museum tours",
-        description: "Tour listings now emphasize exhibition context, guide details, and capacity so members can tell what is available at a glance.",
+        title: "Tours",
+        description: "",
         imagePath: "/images/spring-collection.jpg",
         alt: "Museum guided tour scene.",
         actions: [
@@ -424,20 +437,20 @@ function registerToursRoutes(app, { pool }) {
       },
       alertContent: !membershipActive ? {
         type: "warning",
-        title: "Membership inactive",
-        message: `Your membership is ${memberInfo?.Status ?? "inactive"}. Renew before registering for tours.`,
+        title: hasMembership ? "Membership inactive" : "Membership required",
+        message: hasMembership
+          ? `Your membership is ${memberInfo.Status}. Renew before registering for tours.`
+          : "Join or restore membership to register for tours.",
+        actions: [{ href: "/purchase-membership", label: hasMembership ? "Open Membership" : "Join" }],
       } : null,
       content: `
         <section class="card" id="tour-options">
-          <p class="eyebrow">Upcoming Tours</p>
-          <h2>Choose a guided experience</h2>
-          <p class="section-lead">Tours are presented as museum offerings first, with status and availability surfaced directly on each card.</p>
+          <h2>Guided Tours</h2>
           ${renderFlash(req)}
-          ${renderTourCards(upcomingTours, membershipActive)}
+          ${renderTourCards(upcomingTours, membershipActive, hasMembership)}
         </section>
         <section class="card">
-          <p class="eyebrow">My Registrations</p>
-          <h2>Registered tours</h2>
+          <h2>My Tours</h2>
           <table>
             <thead>
               <tr>
@@ -463,7 +476,7 @@ function registerToursRoutes(app, { pool }) {
     const membershipId = req.session.user.membershipId;
 
     if (!tourId || !membershipId) {
-      setFlash(req, "Invalid request.");
+      setFlash(req, "Select a tour before registering.");
       return res.redirect("/tour-register");
     }
 
@@ -473,7 +486,7 @@ function registerToursRoutes(app, { pool }) {
     );
     if (!memberStatus || memberStatus.Status !== "Active") {
       const status = memberStatus?.Status ?? "unknown";
-      setFlash(req, `Your membership is ${status}. Please visit the admissions desk to renew before registering for tours.`);
+      setFlash(req, `Your membership is ${status}. Renew at the admissions desk before registering for tours.`);
       return res.redirect("/tour-register");
     }
 
@@ -483,7 +496,7 @@ function registerToursRoutes(app, { pool }) {
          VALUES (?, ?, CURDATE(), CURDATE())`,
         [tourId, membershipId]
       );
-      setFlash(req, "You are registered for the tour!");
+      setFlash(req, "Tour registration confirmed.");
     } catch (err) {
       if (err.code === "ER_DUP_ENTRY") {
         setFlash(req, "You are already registered for this tour.");
