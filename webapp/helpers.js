@@ -17,12 +17,43 @@ const ART_PERIODS = [
   "Pop Art (1950s-1960s)", "Contemporary (1970-present)"
 ];
 
-const PLACEHOLDER_ASSETS = {
-  artwork: "/images/artwork-placeholder.svg",
-  exhibit: "/images/exhibit-placeholder.svg",
+const FALLBACK_ASSETS = {
+  artwork: "/images/nicolas-lancret.jpg",
+  exhibit: "/images/exhibition-design.jpg",
   giftshop: "/images/gift-shop.jpg",
-  cafe: "/images/cafe-placeholder.svg",
-  visit: "/images/visit-placeholder.svg",
+  cafe: "/images/cafe.jpg",
+  visit: "/images/visitor-services.jpg",
+};
+
+const FALLBACK_POOLS = {
+  artwork: [
+    "/images/nicolas-lancret.jpg",
+    "/images/frederick-kerseboom.jpg",
+    "/images/claude-monet.jpg",
+    "/images/van-gogh-museum.jpg",
+    "/images/exhibit.jpg",
+  ],
+  exhibit: [
+    "/images/exhibition-design.jpg",
+    "/images/spring-collection.jpg",
+    "/images/summer-showcase-outside.jpg",
+    "/images/art-history-renaissance.jpg",
+    "/images/exhibit.jpg",
+  ],
+  giftshop: [
+    "/images/gift-shop.jpg",
+    "/images/tote.jpg",
+    "/images/catalogue.jpg",
+    "/images/scarf.jpg",
+    "/images/magnet.jpg",
+  ],
+  cafe: [
+    "/images/cafe.jpg",
+    "/images/cappuccino.jpg",
+    "/images/croissant.jpg",
+    "/images/salad.jpg",
+    "/images/sandwich.jpg",
+  ],
 };
 
 const ARTWORK_ASSETS = {
@@ -32,17 +63,33 @@ const ARTWORK_ASSETS = {
   "st peter martyr: reburial": "/images/st-peter-martyr.jpg",
   "female head type 7": "/images/female-type-7.jpg",
   deposition: "/images/deposition-empoli.jpg",
-  "deposition|sculpture": "/images/deposition-egell.jpg.jpg",
+  "deposition|sculpture": "/images/deposition-egell.jpg",
   "leonore discovers dagger": "/images/leonore-discovers-dagger.jpg",
   "la roubine du roi": "/images/la-roubine-du-roi.jpg",
   "the birth of the last muse": "/images/the-birth-of-the-last-muse.jpg",
+  "billiard players": "/images/billiard-players.jpg",
+  "portrait of sir john langham": "/images/portrait-of-john-langham.jpg",
+  "portrait of john langham": "/images/portrait-of-john-langham.jpg",
 };
 
 const EXHIBITION_ASSETS = {
   "spring collection 2026": "/images/spring-collection.jpg",
-  "summer showcase 2026": "/images/summer-showcase.jpg",
+  "summer showcase 2026": "/images/summer-showcase-outside.jpg",
   "spring exhibition opening gala": "/images/spring-exhibition-opening-gala.jpg",
   "art history: renaissance": "/images/art-history-renaissance.jpg",
+  "members-only: summer showcase": "/images/summer-showcase.jpg",
+  "family art workshop": "/images/family-art-workshop.jpg",
+  "curator special: van gogh": "/images/van-gogh-museum.jpg",
+  "evening jazz & art": "/images/evening-jazz.jpg",
+  "summer solstice celebration": "/images/summer-solstice-celebration.jpg",
+  "conservation workshop": "/images/conservation-workshop.jpg",
+  "spring exhibition highlights": "/images/education.jpg",
+  "family discovery tour": "/images/family-art-workshop.jpg",
+  "van gogh & friends": "/images/van-gogh-museum.jpg",
+  "summer showcase preview": "/images/summer-showcase-outside.jpg",
+  "spanish art highlights": "/images/art-history-renaissance.jpg",
+  "behind the scenes conservation": "/images/conservation-workshop.jpg",
+  "sunday morning classics": "/images/conservation.jpg",
 };
 
 const ARTIST_ASSETS = {
@@ -57,15 +104,18 @@ const ARTIST_ASSETS = {
   "henry fuseli": "/images/henry-fuseli.jpg",
   "jacopo da empoli": "/images/jacopo-da-empoli.jpg",
   "paul egell": "/images/paul-egell.jpg",
+  "friedrich kerseboom": "/images/frederick-kerseboom.jpg",
+  "frederick kerseboom": "/images/frederick-kerseboom.jpg",
+  "nicolas lancret": "/images/nicolas-lancret.jpg",
 };
 
 const ROLE_ASSETS = {
   public: { imagePath: "/images/museum2.jpg", alt: "Museum gallery atrium." },
   user: { imagePath: "/images/museum3.jpg", alt: "Museum visitor gallery." },
-  admissions: { imagePath: "/images/admission.jpg", alt: "Museum admissions desk." },
+  admissions: { imagePath: "/images/visitor-services.jpg", alt: "Museum visitor services desk." },
   giftshop: { imagePath: "/images/gift-shop.jpg", alt: "Museum gift shop display." },
   cafe: { imagePath: "/images/cafe.jpg", alt: "Museum cafe counter." },
-  curator: { imagePath: "/images/exhibit.jpg", alt: "Museum exhibition gallery." },
+  curator: { imagePath: "/images/curatorial.jpg", alt: "Museum curatorial workspace." },
   supervisor: { imagePath: "/images/museum4.jpg", alt: "Museum operations gallery." },
   employee: { imagePath: "/images/museum5.jpg", alt: "Museum staff workspace." },
 };
@@ -97,7 +147,7 @@ const CAFE_ASSETS = {
   drink: "/images/cappuccino.jpg",
   dessert: "/images/croissant.jpg",
   snack: "/images/blueberry-muffin.jpg",
-  other: "/images/cafe-placeholder.svg",
+  other: "/images/cafe.jpg",
 };
 
 const CAFE_ITEM_ASSETS = {
@@ -225,6 +275,18 @@ function normalizeLookup(value) {
     .replace(/\s+/g, " ");
 }
 
+function chooseFallbackAsset(seed, poolName) {
+  const pool = FALLBACK_POOLS[poolName] || [FALLBACK_ASSETS.visit];
+  const text = normalizeLookup(seed) || poolName;
+  let hash = 0;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+  }
+
+  return pool[hash % pool.length];
+}
+
 function sanitizeImageUrl(value) {
   const raw = String(value ?? "").trim();
 
@@ -255,7 +317,7 @@ function getArtworkAsset(title, type = "", imageUrl = null) {
   const customImage = sanitizeImageUrl(imageUrl);
 
   return {
-    imagePath: customImage || typeMatch || ARTWORK_ASSETS[key] || PLACEHOLDER_ASSETS.artwork,
+    imagePath: customImage || typeMatch || ARTWORK_ASSETS[key] || chooseFallbackAsset(`${key}|${typeKey}`, "artwork"),
     alt: title ? `${title} artwork image.` : "Artwork image pending.",
     isPlaceholder: !(customImage || typeMatch || ARTWORK_ASSETS[key]),
   };
@@ -265,7 +327,7 @@ function getArtistAsset(name, imageUrl = null) {
   const key = normalizeLookup(name);
   const customImage = sanitizeImageUrl(imageUrl);
   return {
-    imagePath: customImage || ARTIST_ASSETS[key] || PLACEHOLDER_ASSETS.artwork,
+    imagePath: customImage || ARTIST_ASSETS[key] || chooseFallbackAsset(key, "artwork"),
     alt: name ? `${name} artist image.` : "Artist image pending.",
     isPlaceholder: !(customImage || ARTIST_ASSETS[key]),
   };
@@ -275,7 +337,7 @@ function getExhibitionAsset(name, imageUrl = null) {
   const key = normalizeLookup(name);
   const customImage = sanitizeImageUrl(imageUrl);
   return {
-    imagePath: customImage || EXHIBITION_ASSETS[key] || PLACEHOLDER_ASSETS.exhibit,
+    imagePath: customImage || EXHIBITION_ASSETS[key] || chooseFallbackAsset(key, "exhibit"),
     alt: name ? `${name} exhibition image.` : "Exhibition image pending.",
     isPlaceholder: !(customImage || EXHIBITION_ASSETS[key]),
   };
@@ -290,8 +352,8 @@ function getGiftShopAsset(name, category, imageUrl = null) {
   const categoryKey = normalizeLookup(category);
   const customImage = sanitizeImageUrl(imageUrl);
   return {
-    imagePath: customImage || GIFTSHOP_ITEM_ASSETS[nameKey] || GIFTSHOP_ASSETS[categoryKey] || PLACEHOLDER_ASSETS.giftshop,
-    alt: name ? `${name} gift shop item image.` : "Gift shop item placeholder image.",
+    imagePath: customImage || GIFTSHOP_ITEM_ASSETS[nameKey] || GIFTSHOP_ASSETS[categoryKey] || chooseFallbackAsset(`${nameKey}|${categoryKey}`, "giftshop"),
+    alt: name ? `${name} gift shop item image.` : "Gift shop item image.",
   };
 }
 
@@ -300,8 +362,8 @@ function getCafeAsset(name, type, imageUrl = null) {
   const typeKey = normalizeLookup(type);
   const customImage = sanitizeImageUrl(imageUrl);
   return {
-    imagePath: customImage || CAFE_ITEM_ASSETS[nameKey] || CAFE_ASSETS[typeKey] || PLACEHOLDER_ASSETS.cafe,
-    alt: name ? `${name} cafe item image.` : "Cafe item placeholder image.",
+    imagePath: customImage || CAFE_ITEM_ASSETS[nameKey] || CAFE_ASSETS[typeKey] || chooseFallbackAsset(`${nameKey}|${typeKey}`, "cafe"),
+    alt: name ? `${name} cafe item image.` : "Cafe item image.",
   };
 }
 
@@ -537,7 +599,7 @@ function renderHero(hero) {
   const media = hero.videoPath
     ? `
       <div class="media-hero__media video-hero">
-        <video autoplay muted loop playsinline poster="${escapeHtml(hero.posterPath || hero.imagePath || PLACEHOLDER_ASSETS.visit)}">
+        <video autoplay muted loop playsinline poster="${escapeHtml(hero.posterPath || hero.imagePath || FALLBACK_ASSETS.visit)}">
           <source src="${escapeHtml(hero.videoPath)}" type="video/mp4">
         </video>
         <button class="hero-media-toggle" type="button" data-hero-video-toggle aria-pressed="false" aria-label="Pause background video">
@@ -548,7 +610,7 @@ function renderHero(hero) {
     `
     : `
       <div class="media-hero__media">
-        <img src="${escapeHtml(asset.imagePath || PLACEHOLDER_ASSETS.visit)}" alt="${escapeHtml(asset.alt || hero.title || "Museum image.")}">
+        <img src="${escapeHtml(asset.imagePath || FALLBACK_ASSETS.visit)}" alt="${escapeHtml(asset.alt || hero.title || "Museum image.")}">
       </div>
     `;
 
@@ -592,7 +654,7 @@ function renderFeatureCards(cards) {
       ${cards.map((card) => `
         <article class="feature-card">
           <div class="feature-card__media">
-            <img src="${escapeHtml(card.imagePath || PLACEHOLDER_ASSETS.exhibit)}" alt="${escapeHtml(card.alt || card.title)}">
+            <img src="${escapeHtml(card.imagePath || FALLBACK_ASSETS.exhibit)}" alt="${escapeHtml(card.alt || card.title)}">
           </div>
           <div class="feature-card__body">
             <h2>${escapeHtml(card.title)}</h2>
@@ -624,7 +686,7 @@ function renderCarousel({ title, eyebrow = "", description = "", slides = [] }) 
             ${slides.map((slide, index) => `
               <article class="carousel__slide ${index === 0 ? "is-active" : ""}" data-carousel-slide>
                 <div class="carousel__media">
-                  <img src="${escapeHtml(slide.imagePath || PLACEHOLDER_ASSETS.visit)}" alt="${escapeHtml(slide.alt || slide.title)}">
+                  <img src="${escapeHtml(slide.imagePath || FALLBACK_ASSETS.visit)}" alt="${escapeHtml(slide.alt || slide.title)}">
                 </div>
                 <div class="carousel__body">
                   <h3>${escapeHtml(slide.title)}</h3>
@@ -1003,5 +1065,5 @@ module.exports = {
   isCurator,
   logTriggerViolation,
   slugify,
-  PLACEHOLDER_ASSETS,
+  FALLBACK_ASSETS,
 };

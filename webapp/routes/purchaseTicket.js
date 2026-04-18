@@ -297,8 +297,8 @@ function registerPurchaseTicketRoutes(app, { pool }) {
         eyebrow: "Tickets",
         title: "Tickets",
         description: "",
-        imagePath: "/images/summer-showcase.jpg",
-        alt: "Museum visitors walking through an exhibition.",
+        imagePath: "/images/admission.jpg",
+        alt: "Museum admissions desk.",
         actions: [
           { href: "#ticket-options", label: "Buy Tickets" },
           { href: "/tour-register", label: "Browse Tours", secondary: true },

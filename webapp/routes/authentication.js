@@ -110,7 +110,7 @@ function registerAuthenticationRoutes(app, { pool }) {
           </div>
           <div class="public-choice-grid">
             <article class="public-choice-card">
-              <div class="public-choice-card__media"><img src="/images/summer-showcase.jpg" alt="Visitors entering a museum exhibition."></div>
+              <div class="public-choice-card__media"><img src="/images/summer-showcase-outside.jpg" alt="Visitors entering a museum exhibition."></div>
               <div class="feature-card__body">
                 <p class="eyebrow">Admission</p>
                 <h2>Tickets</h2>
@@ -119,7 +119,7 @@ function registerAuthenticationRoutes(app, { pool }) {
               </div>
             </article>
             <article class="public-choice-card">
-              <div class="public-choice-card__media"><img src="/images/museum3.jpg" alt="Museum member gallery."></div>
+              <div class="public-choice-card__media"><img src="/images/visitor-services.jpg" alt="Museum visitor services area."></div>
               <div class="feature-card__body">
                 <p class="eyebrow">Membership</p>
                 <h2>Member Services</h2>
@@ -128,7 +128,7 @@ function registerAuthenticationRoutes(app, { pool }) {
               </div>
             </article>
             <article class="public-choice-card">
-              <div class="public-choice-card__media"><img src="/images/museum5.jpg" alt="Museum tour visitors."></div>
+              <div class="public-choice-card__media"><img src="/images/education.jpg" alt="Museum guided education program."></div>
               <div class="feature-card__body">
                 <p class="eyebrow">Guided Visits</p>
                 <h2>Tours</h2>
@@ -137,7 +137,7 @@ function registerAuthenticationRoutes(app, { pool }) {
               </div>
             </article>
             <article class="public-choice-card">
-              <div class="public-choice-card__media"><img src="/images/spring-exhibition-opening-gala.jpg" alt="Museum evening event."></div>
+              <div class="public-choice-card__media"><img src="/images/evening-jazz.jpg" alt="Museum evening event."></div>
               <div class="feature-card__body">
                 <p class="eyebrow">Programs</p>
                 <h2>Events</h2>
@@ -187,7 +187,7 @@ function registerAuthenticationRoutes(app, { pool }) {
           <div class="home-collection-collage" aria-hidden="true">
             <img src="/images/the-farnese-hours.jpg" alt="">
             <img src="/images/allegory.jpg" alt="">
-            <img src="/images/van-gogh.jpg" alt="">
+            <img src="/images/van-gogh-museum.jpg" alt="">
             <img src="/images/claude-monet.jpg" alt="">
             <img src="/images/Jean-Auguste-Dominique-Ingres.jpg" alt="">
             <img src="/images/the-rose-garden.jpg" alt="">

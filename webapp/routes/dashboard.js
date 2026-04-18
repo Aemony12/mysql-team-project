@@ -358,11 +358,11 @@ function registerDashboardRoutes(app, { pool }) {
           { eyebrow: "Visit", title: "Tickets", description: "", href: "/purchase-ticket", linkLabel: "Buy Tickets", imagePath: "/images/admission.jpg", alt: "Museum admissions desk." },
         ] : []),
         ...(hasMembership ? [
-          { eyebrow: "Membership", title: "Membership", description: needsRenewal ? `Status: ${memberStatus}.` : "", href: "/purchase-ticket", linkLabel: needsRenewal ? "Renew" : "Manage", imagePath: "/images/museum3.jpg", alt: "Museum member gallery." },
+          { eyebrow: "Membership", title: "Membership", description: needsRenewal ? `Status: ${memberStatus}.` : "", href: "/purchase-ticket", linkLabel: needsRenewal ? "Renew" : "Manage", imagePath: "/images/visitor-services.jpg", alt: "Museum member services area." },
         ] : []),
         ...(hasMembership && hasTicket ? [
-          { eyebrow: "Tours", title: "Tours", description: "", href: "/tour-register", linkLabel: "Browse Tours", imagePath: "/images/museum5.jpg", alt: "Museum tour visitors." },
-          { eyebrow: "Events", title: "Events", description: "", href: "/event-register", linkLabel: "View Events", imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Museum event." },
+          { eyebrow: "Tours", title: "Tours", description: "", href: "/tour-register", linkLabel: "Browse Tours", imagePath: "/images/education.jpg", alt: "Museum tour visitors." },
+          { eyebrow: "Events", title: "Events", description: "", href: "/event-register", linkLabel: "View Events", imagePath: "/images/evening-jazz.jpg", alt: "Museum event." },
         ] : []),
         { eyebrow: "Art", title: "Collection", description: "", href: "/queries?view=artwork-status#query-tabs", linkLabel: "Search Collection", imagePath: "/images/the-farnese-hours.jpg", alt: "Illuminated manuscript artwork." },
       ];
@@ -449,9 +449,9 @@ function registerDashboardRoutes(app, { pool }) {
             ${renderFlash(req)}
           </section>
           ${renderActionCards([
-            { eyebrow: "Tickets", title: "Ticket Sales", description: "", href: "/sell-ticket", linkLabel: "Open Register", imagePath: "/images/summer-showcase.jpg", alt: "Museum admissions view." },
-            { eyebrow: "Membership", title: "Memberships", description: "", href: "/add-membership", linkLabel: "Open Memberships", imagePath: "/images/spring-collection.jpg", alt: "Museum member services area." },
-            { eyebrow: "Reporting", title: "Sales Report", description: "", href: "/ticket-sales", linkLabel: "Open Sales Report", imagePath: "/images/spring-exhibition-opening-gala.jpg", alt: "Museum visitor traffic." },
+            { eyebrow: "Tickets", title: "Ticket Sales", description: "", href: "/sell-ticket", linkLabel: "Open Register", imagePath: "/images/admission.jpg", alt: "Museum admissions view." },
+            { eyebrow: "Membership", title: "Memberships", description: "", href: "/add-membership", linkLabel: "Open Memberships", imagePath: "/images/visitor-services.jpg", alt: "Museum member services area." },
+            { eyebrow: "Reporting", title: "Sales Report", description: "", href: "/ticket-sales", linkLabel: "Open Sales Report", imagePath: "/images/marketing.jpg", alt: "Museum visitor traffic." },
           ])}
         `,
       }));
@@ -544,7 +544,7 @@ function registerDashboardRoutes(app, { pool }) {
           ${renderActionCards([
             { eyebrow: "Search", title: "Collection", description: "", href: "/queries", linkLabel: "Open Search", imagePath: "/images/the-farnese-hours.jpg", alt: "Collection artwork." },
             { eyebrow: "Artwork", title: "Artwork", description: "", href: "/add-artwork", linkLabel: "Manage Artwork", imagePath: "/images/allegory.jpg", alt: "Artwork record view." },
-            { eyebrow: "Exhibitions", title: "Exhibitions", description: "", href: "/add-exhibition", linkLabel: "Manage Exhibitions", imagePath: "/images/spring-collection.jpg", alt: "Exhibition planning image." },
+            { eyebrow: "Exhibitions", title: "Exhibitions", description: "", href: "/add-exhibition", linkLabel: "Manage Exhibitions", imagePath: "/images/exhibit.jpg", alt: "Exhibition gallery planning image." },
           ])}
         `,
       }));
@@ -573,7 +573,7 @@ function registerDashboardRoutes(app, { pool }) {
             ${renderFlash(req)}
           </section>
           ${renderActionCards([
-            { eyebrow: "Admissions", title: "Tickets", description: "", href: "/sell-ticket", linkLabel: "Open Register", imagePath: "/images/summer-showcase.jpg", alt: "Museum admissions view." },
+            { eyebrow: "Admissions", title: "Tickets", description: "", href: "/sell-ticket", linkLabel: "Open Register", imagePath: "/images/admission.jpg", alt: "Museum admissions view." },
             { eyebrow: "Gift Shop", title: "Gift Shop", description: "", href: "/gift-order", linkLabel: "Open POS", imagePath: getGiftShopAsset("Museum Tote Bag", "Merchandise").imagePath, alt: "Gift shop product display." },
             { eyebrow: "Cafe", title: "Cafe", description: "", href: "/order", linkLabel: "Open POS", imagePath: "/images/cafe.jpg", alt: "Cafe ordering area." },
           ])}

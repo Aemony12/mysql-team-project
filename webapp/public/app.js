@@ -521,9 +521,22 @@
 
   const recordAssets = {
     "spring collection 2026": "/images/spring-collection.jpg",
-    "summer showcase 2026": "/images/summer-showcase.jpg",
+    "summer showcase 2026": "/images/summer-showcase-outside.jpg",
     "spring exhibition opening gala": "/images/spring-exhibition-opening-gala.jpg",
     "art history: renaissance": "/images/art-history-renaissance.jpg",
+    "members-only: summer showcase": "/images/summer-showcase.jpg",
+    "family art workshop": "/images/family-art-workshop.jpg",
+    "curator special: van gogh": "/images/van-gogh-museum.jpg",
+    "evening jazz & art": "/images/evening-jazz.jpg",
+    "summer solstice celebration": "/images/summer-solstice-celebration.jpg",
+    "conservation workshop": "/images/conservation-workshop.jpg",
+    "spring exhibition highlights": "/images/education.jpg",
+    "family discovery tour": "/images/family-art-workshop.jpg",
+    "van gogh & friends": "/images/van-gogh-museum.jpg",
+    "summer showcase preview": "/images/summer-showcase-outside.jpg",
+    "spanish art highlights": "/images/art-history-renaissance.jpg",
+    "behind the scenes conservation": "/images/conservation-workshop.jpg",
+    "sunday morning classics": "/images/conservation.jpg",
     allegory: "/images/allegory.jpg",
     "the rose garden": "/images/the-rose-garden.jpg",
     "the farnese hours": "/images/the-farnese-hours.jpg",
@@ -533,19 +546,23 @@
     "leonore discovers dagger": "/images/leonore-discovers-dagger.jpg",
     "la roubine du roi": "/images/la-roubine-du-roi.jpg",
     "the birth of the last muse": "/images/the-birth-of-the-last-muse.jpg",
+    "billiard players": "/images/billiard-players.jpg",
+    "portrait of sir john langham": "/images/portrait-of-john-langham.jpg",
+    "portrait of john langham": "/images/portrait-of-john-langham.jpg",
     "jean-auguste-dominique ingres": "/images/Jean-Auguste-Dominique-Ingres.jpg",
     "jean-auguste-dominique-ingres": "/images/Jean-Auguste-Dominique-Ingres.jpg",
     "albrecht durer": "/images/albrecht-durer.jpg",
     "albrecht dürer": "/images/albrecht-durer.jpg",
-    "billiard players": "/images/billiard-players.jpg",
     "carl frederik aagaard": "/images/carl-frederik-aagaard.jpg",
+    "friedrich kerseboom": "/images/frederick-kerseboom.jpg",
+    "frederick kerseboom": "/images/frederick-kerseboom.jpg",
     "giovanni di balduccio": "/images/giovanni-di-balduccio.jpg",
     "giulio clovio": "/images/giulio-clovio.jpg",
     "hans von aachen": "/images/hans-von-aachen.jpg",
     "henry fuseli": "/images/henry-fuseli.jpg",
     "jacopo da empoli": "/images/jacopo-da-empoli.jpg",
+    "nicolas lancret": "/images/nicolas-lancret.jpg",
     "paul egell": "/images/paul-egell.jpg",
-    "portrait of john langham": "/images/portrait-of-john-langham.jpg",
     "museum tote bag": "/images/tote.jpg",
     "van gogh umbrella": "/images/van-gogh-umbrella.jpg",
     "art history coloring book": "/images/art-history-coloring-book.jpg",
@@ -567,32 +584,94 @@
     sandwich: "/images/sandwich.jpg",
   };
 
-  const defaultAssetForSection = (sectionTitle) => {
+  const fallbackPools = {
+    artwork: [
+      "/images/nicolas-lancret.jpg",
+      "/images/frederick-kerseboom.jpg",
+      "/images/claude-monet.jpg",
+      "/images/van-gogh-museum.jpg",
+      "/images/exhibit.jpg",
+    ],
+    exhibition: [
+      "/images/exhibition-design.jpg",
+      "/images/spring-collection.jpg",
+      "/images/summer-showcase-outside.jpg",
+      "/images/art-history-renaissance.jpg",
+      "/images/exhibit.jpg",
+    ],
+    giftshop: [
+      "/images/gift-shop.jpg",
+      "/images/tote.jpg",
+      "/images/catalogue.jpg",
+      "/images/scarf.jpg",
+      "/images/magnet.jpg",
+    ],
+    cafe: [
+      "/images/cafe.jpg",
+      "/images/cappuccino.jpg",
+      "/images/croissant.jpg",
+      "/images/salad.jpg",
+      "/images/sandwich.jpg",
+    ],
+    visit: [
+      "/images/visitor-services.jpg",
+      "/images/admission.jpg",
+      "/images/museum2.jpg",
+      "/images/museum3.jpg",
+      "/images/museum5.jpg",
+    ],
+  };
+
+  const chooseFallbackAsset = (seed, poolName) => {
+    const pool = fallbackPools[poolName] || fallbackPools.visit;
+    const text = normalizeText(seed) || poolName;
+    let hash = 0;
+
+    for (let index = 0; index < text.length; index += 1) {
+      hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+    }
+
+    return pool[hash % pool.length];
+  };
+
+  const defaultAssetForSection = (sectionTitle, seed = "") => {
     const title = normalizeText(sectionTitle);
     const path = window.location.pathname;
 
+    if (title.includes("condition") || title.includes("conservation") || path.includes("condition")) {
+      return "/images/conservation.jpg";
+    }
     if (title.includes("artwork") || path.includes("artwork") || title.includes("artist")) {
-      return "/images/artwork-placeholder.svg";
+      return chooseFallbackAsset(seed || sectionTitle, "artwork");
     }
     if (title.includes("exhibition") || path.includes("exhibition")) {
-      return "/images/exhibit-placeholder.svg";
+      return chooseFallbackAsset(seed || sectionTitle, "exhibition");
+    }
+    if (title.includes("tour") || path.includes("tour")) {
+      return "/images/education.jpg";
+    }
+    if (title.includes("report") || title.includes("marketing") || path.includes("report")) {
+      return "/images/marketing.jpg";
     }
     if (title.includes("gift") || path.includes("item") || path.includes("sale")) {
-      return "/images/gift-shop.jpg";
+      return chooseFallbackAsset(seed || sectionTitle, "giftshop");
     }
     if (title.includes("cafe") || title.includes("café") || path.includes("food")) {
-      return "/images/cafe-placeholder.svg";
+      return chooseFallbackAsset(seed || sectionTitle, "cafe");
     }
     if (title.includes("current members") || title.includes("employee") || title.includes("staff directory") || title.includes("users")) {
       return "/images/user.jpg";
     }
-    return "/images/visit-placeholder.svg";
+    return chooseFallbackAsset(seed || sectionTitle, "visit");
   };
 
   const findRecordImage = (sectionTitle, cells) => {
     const values = cells.map((cell) => normalizeText(cell.textContent));
+    if (values.includes("deposition") && values.includes("sculpture")) {
+      return "/images/deposition-egell.jpg";
+    }
     const matchedValue = values.find((value) => recordAssets[value]);
-    return recordAssets[matchedValue] || defaultAssetForSection(sectionTitle);
+    return recordAssets[matchedValue] || defaultAssetForSection(sectionTitle, values.join("|"));
   };
 
   const initRecordCards = (root = document) => {

@@ -19,7 +19,7 @@ function renderTourCards(tours, membershipActive, hasMembership) {
   return `
     <div class="feature-grid program-grid">
       ${tours.map((tour) => {
-        const asset = getExhibitionAsset(tour.Exhibition_Name || tour.Tour_Name);
+        const asset = getExhibitionAsset(tour.Tour_Name || tour.Exhibition_Name);
         const spotsLeft = tour.Max_Capacity - tour.Registered_Count;
         const isFull = spotsLeft <= 0;
         const isRegistered = tour.Already_Registered > 0;
@@ -135,7 +135,7 @@ function registerToursRoutes(app, { pool }) {
         eyebrow: "Supervisor Tours",
         title: "Tours",
         description: "",
-        imagePath: "/images/spring-collection.jpg",
+        imagePath: "/images/education.jpg",
         alt: "Museum guided tour planning view.",
       },
       content: `
@@ -428,7 +428,7 @@ function registerToursRoutes(app, { pool }) {
         eyebrow: "Guided Tours",
         title: "Tours",
         description: "",
-        imagePath: "/images/spring-collection.jpg",
+        imagePath: "/images/education.jpg",
         alt: "Museum guided tour scene.",
         actions: [
           { href: "#tour-options", label: "Browse Tours" },
