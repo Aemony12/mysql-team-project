@@ -20,6 +20,7 @@ function renderTourCards(tours, membershipActive, hasMembership) {
     <div class="feature-grid program-grid">
       ${tours.map((tour) => {
         const asset = getExhibitionAsset(tour.Tour_Name || tour.Exhibition_Name);
+        const imagePath = tour.Image_URL || asset.imagePath;
         const spotsLeft = tour.Max_Capacity - tour.Registered_Count;
         const isFull = spotsLeft <= 0;
         const isRegistered = tour.Already_Registered > 0;
@@ -43,7 +44,7 @@ function renderTourCards(tours, membershipActive, hasMembership) {
 
         return `
           <article class="feature-card">
-            <div class="feature-card__media"><img src="${asset.imagePath}" alt="${asset.alt}"></div>
+            <div class="feature-card__media"><img src="${imagePath}" alt="${asset.alt}"></div>
             <div class="feature-card__body event-card__body">
               <div class="event-card__content">
                 <p class="eyebrow">${escapeHtml(tour.Language)} Tour</p>
@@ -68,7 +69,20 @@ function renderTourCards(tours, membershipActive, hasMembership) {
   `;
 }
 
-function registerToursRoutes(app, { pool }) {
+async function hasColumn(pool, tableName, columnName) {
+  const [rows] = await pool.query(
+    `SELECT 1
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND COLUMN_NAME = ?
+     LIMIT 1`,
+    [tableName, columnName],
+  );
+  return rows.length > 0;
+}
+
+function registerToursRoutes(app, { pool, upload }) {
   app.get("/tours", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const [employees] = await pool.query(`
       SELECT Employee_ID, CONCAT(First_Name, ' ', Last_Name) AS Full_Name
@@ -139,7 +153,7 @@ function registerToursRoutes(app, { pool }) {
         <section class="card narrow">
           <h2>Guided Tours</h2>
           ${renderFlash(req)}
-          <form method="post" action="/tours" class="form-grid">
+          <form method="post" action="/tours" class="form-grid" enctype="multipart/form-data">
             <label>Tour Name
               <input type="text" name="tour_name" required placeholder="e.g. Impressionism Highlights">
             </label>
@@ -180,6 +194,9 @@ function registerToursRoutes(app, { pool }) {
                 <option value="Arabic">Arabic</option>
               </select>
             </label>
+            <label>Image (optional)
+              <input type="file" name="image_file" accept="image/*">
+            </label>
             <button class="button" type="submit">Schedule Tour</button>
           </form>
         </section>
@@ -208,7 +225,7 @@ function registerToursRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/tours", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/tours", requireLogin, allowRoles(["supervisor"]), upload.single("image_file"), asyncHandler(async (req, res) => {
     const {
       tour_name: tourName,
       tour_date: tourDate,
@@ -225,14 +242,27 @@ function registerToursRoutes(app, { pool }) {
       return res.redirect("/tours");
     }
 
+    const hasTourImageUrlColumn = await hasColumn(pool, "Tour", "Image_URL");
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
     try {
-      await pool.query(
-        `INSERT INTO Tour
-           (Tour_Name, Tour_Date, Start_Time, End_Time, Max_Capacity,
-            Guide_ID, Exhibition_ID, Language, Created_At)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())`,
-        [tourName.trim(), tourDate, startTime, endTime, maxCapacity, guideId || null, exhibitionId || null, language || "English"]
-      );
+      if (hasTourImageUrlColumn) {
+        await pool.query(
+          `INSERT INTO Tour
+             (Tour_Name, Tour_Date, Start_Time, End_Time, Max_Capacity,
+              Guide_ID, Exhibition_ID, Language, Image_URL, Created_At)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())`,
+          [tourName.trim(), tourDate, startTime, endTime, maxCapacity, guideId || null, exhibitionId || null, language || "English", imageUrl]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO Tour
+             (Tour_Name, Tour_Date, Start_Time, End_Time, Max_Capacity,
+              Guide_ID, Exhibition_ID, Language, Created_At)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())`,
+          [tourName.trim(), tourDate, startTime, endTime, maxCapacity, guideId || null, exhibitionId || null, language || "English"]
+        );
+      }
       setFlash(req, "Tour scheduled.");
     } catch (err) {
       if (err.sqlState === "45000") {
@@ -282,6 +312,7 @@ function registerToursRoutes(app, { pool }) {
 
     const [registrations] = await pool.query(
       `SELECT TR.Tour_Registration_ID, TR.Registration_Date,
+              TR.Membership_ID,
               M.First_Name, M.Last_Name, M.Email, M.Phone_Number
        FROM Tour_Registration TR
        JOIN Membership M ON TR.Membership_ID = M.Membership_ID
@@ -290,22 +321,24 @@ function registerToursRoutes(app, { pool }) {
       [tourId]
     );
 
-    const rosterRows = registrations.map((r) => `
-      <tr>
-        <td>${escapeHtml(r.First_Name)} ${escapeHtml(r.Last_Name)}</td>
-        <td>${escapeHtml(r.Email || "N/A")}</td>
+    const rosterRows = registrations.map((r) => {
+      const dateTs = r.Registration_Date ? new Date(r.Registration_Date).getTime() : 0;
+      const fullName = `${r.First_Name} ${r.Last_Name}`;
+      return `<tr data-order-id="${r.Membership_ID}" data-date="${dateTs}" data-name="${escapeHtml(fullName.toLowerCase())}">
+        <td style="font-weight:600;">${r.Membership_ID}</td>
+        <td>${escapeHtml(fullName)}</td>
+        <td style="word-break:break-all;">${escapeHtml(r.Email || "N/A")}</td>
         <td>${escapeHtml(r.Phone_Number || "N/A")}</td>
         <td>${formatDisplayDate(r.Registration_Date)}</td>
         <td>
-          <form method="post" action="/tours/remove-registration" class="inline-form"
-                onsubmit="return confirm('Remove this member from the tour?');">
+          <form method="post" action="/tours/remove-registration" class="inline-form" onsubmit="return confirm('Remove this member from the tour?');">
             <input type="hidden" name="registration_id" value="${r.Tour_Registration_ID}">
             <input type="hidden" name="tour_id" value="${tourId}">
             <button class="link-button danger" type="submit">Remove</button>
           </form>
         </td>
-      </tr>
-    `).join("");
+      </tr>`;
+    }).join("");
 
     res.send(renderPage({
       title: `Tour Roster - ${tour.Tour_Name}`,
@@ -322,10 +355,27 @@ function registerToursRoutes(app, { pool }) {
             <div class="detail-item"><dt>Registered</dt><dd>${registrations.length} / ${tour.Max_Capacity}</dd></div>
           </dl>
           ${renderFlash(req)}
-          <p><a href="/tours">Back to all tours</a></p>
-          <table>
+          <p style="margin-bottom:1rem;"><a href="/tours" style="color:#8f4a43;font-size:0.9em;">← Back to all tours</a></p>
+          <div style="display:flex;gap:0.75rem;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9em;font-weight:600;white-space:nowrap;align-self:center;">
+              Sort
+              <select id="roster-sort" style="padding:0.25rem 0.5rem;border-radius:4px;border:1px solid #ccc;font-size:0.9em;">
+                <option value="newest">Newest registered</option>
+                <option value="oldest">Oldest registered</option>
+                <option value="az">Name A–Z</option>
+                <option value="za">Name Z–A</option>
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9em;font-weight:600;white-space:nowrap;align-self:center;">
+              Member ID
+              <input type="text" id="roster-id-search" placeholder="Search…" style="width:90px;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid #ccc;font-size:0.9em;">
+            </label>
+            <span id="roster-count" style="color:#888;font-size:0.85em;margin-left:auto;align-self:center;"></span>
+          </div>
+          <table data-no-cards="true" style="width:100%;">
             <thead>
               <tr>
+                <th>Mbr ID</th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
@@ -333,8 +383,8 @@ function registerToursRoutes(app, { pool }) {
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody>
-              ${rosterRows || '<tr><td colspan="5">No registrations yet.</td></tr>'}
+            <tbody id="tour-roster-list">
+              ${rosterRows || '<tr><td colspan="6" style="color:#888;padding:0.5rem;">No registrations yet.</td></tr>'}
             </tbody>
           </table>
         </section>
@@ -368,6 +418,7 @@ function registerToursRoutes(app, { pool }) {
     const membershipActive = memberInfo?.Status === "Active";
     const hasMembership = Boolean(memberInfo);
 
+    const hasTourImageUrlColumn = await hasColumn(pool, "Tour", "Image_URL");
     const [upcomingTours] = await pool.query(`
       SELECT
         T.Tour_ID,
@@ -377,6 +428,7 @@ function registerToursRoutes(app, { pool }) {
         T.End_Time,
         T.Language,
         T.Max_Capacity,
+        ${hasTourImageUrlColumn ? "T.Image_URL," : "NULL AS Image_URL,"}
         EX.Exhibition_Name,
         CONCAT(E.First_Name, ' ', E.Last_Name) AS Guide_Name,
         (SELECT COUNT(*) FROM Tour_Registration TR WHERE TR.Tour_ID = T.Tour_ID) AS Registered_Count,

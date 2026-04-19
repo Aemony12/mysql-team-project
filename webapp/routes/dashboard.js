@@ -14,7 +14,36 @@ const {
   isGiftShop,
   isCurator,
   renderSupervisorSidebar,
+  translateTriggerMessage,
 } = require("../helpers");
+
+const ROUTE_DISPLAY_MAP = {
+  "/add-sale-line": "Gift Shop · Sale entry",
+  "/gift-order/checkout": "Gift Shop · Checkout",
+  "/add-food-sale-line": "Café · Order entry",
+  "/add-food-sale": "Café · Order management",
+  "/event-register": "Events · Visitor event registration",
+  "/tour-register": "Tours · Visitor tour registration",
+  "/add-artwork": "Collection · Artwork management",
+  "/edit-artwork": "Collection · Artwork edit",
+  "/add-exhibition": "Collection · Exhibition management",
+  "/add-event": "Events · Event management",
+  "/tours": "Tours · Tour management",
+  "/purchase-ticket": "Admissions · Ticket purchase",
+  "/sell-ticket": "Admissions · Visitor admissions",
+  "/add-loan": "Collection · Artwork loan",
+  "/schedule": "Staff · Employee schedule",
+  "/add-membership": "Admissions · Membership management",
+  "/add-artist": "Collection · Artist record",
+  "/admission": "Admissions · Visitor record",
+};
+
+function formatViolationLocation(routePath) {
+  if (!routePath) return "Unknown location";
+  if (!routePath.startsWith("/")) return routePath;
+  return ROUTE_DISPLAY_MAP[routePath] ||
+    routePath.replace(/^\//, "").replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 function renderActionCards(cards) {
   return `
@@ -114,14 +143,17 @@ function renderSupervisorDashboard({
     })),
   ];
   const urgentModal = noticeItems.length ? `
-    <section class="supervisor-issue-modal" role="alert" aria-live="assertive" aria-label="Items requiring review">
+    <section class="supervisor-issue-modal" role="alert" aria-live="assertive" aria-label="Items requiring review" id="supervisor-issue-modal">
       <div class="supervisor-issue-modal__card">
         <div class="section-header">
           <div>
             <p class="eyebrow">Review Required</p>
             <h2>${urgentCount} open item${urgentCount === 1 ? "" : "s"}</h2>
           </div>
-          <a class="supervisor-text-action" href="#supervisor-review-required">View</a>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <a class="supervisor-text-action" href="#supervisor-review-required">View</a>
+            <button type="button" class="supervisor-text-action" onclick="document.getElementById('supervisor-issue-modal').style.display='none'" aria-label="Close">&times;</button>
+          </div>
         </div>
         <ul>
           ${noticeItems.map((item) => `
@@ -708,6 +740,12 @@ function registerDashboardRoutes(app, { pool }) {
       recentArtworks,
     };
 
+    const translatedViolations = triggerViolations.map((v) => ({
+      ...v,
+      message: translateTriggerMessage(v.message),
+      route_path: formatViolationLocation(v.route_path),
+    }));
+
     return res.send(renderPage({
       title: "Supervisor Overview",
       user,
@@ -719,7 +757,7 @@ function registerDashboardRoutes(app, { pool }) {
           user,
           urgentCount,
           notifications,
-          triggerViolations,
+          triggerViolations: translatedViolations,
           metrics,
           collectionRows,
           flashHtml: renderFlash(req),
@@ -753,11 +791,18 @@ function registerDashboardRoutes(app, { pool }) {
     if (!isSupervisor(req.session.user)) {
       return res.redirect("/dashboard");
     }
-
     await pool.query(
       `UPDATE trigger_violation_log SET is_resolved = TRUE WHERE violation_id = ?`,
       [req.params.id],
     );
+    res.redirect("/dashboard");
+  }));
+
+  app.post("/trigger-violations/resolve-all", requireLogin, asyncHandler(async (req, res) => {
+    if (!isSupervisor(req.session.user)) {
+      return res.redirect("/dashboard");
+    }
+    await pool.query(`UPDATE trigger_violation_log SET is_resolved = TRUE WHERE is_resolved = FALSE`);
     res.redirect("/dashboard");
   }));
 }

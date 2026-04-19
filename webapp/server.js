@@ -1,10 +1,30 @@
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
+const multer = require("multer");
 
 const { createPool, loadEnv } = require("./db");
 const { renderPage, setFlash } = require("./helpers");
 const { registerRoutes } = require("./routes");
+
+const uploadStorage = multer.diskStorage({
+  destination: path.join(__dirname, "public", "uploads"),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed."));
+    }
+  },
+});
 
 loadEnv(path.join(__dirname, ".env"));
 
@@ -52,7 +72,7 @@ app.use(
   }),
 );
 
-registerRoutes(app, { pool });
+registerRoutes(app, { pool, upload });
 
 app.use((req, res) => {
   res.status(404).send(renderPage({

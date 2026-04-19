@@ -20,28 +20,28 @@ const { registerLoansRoutes } = require("./loans");
 const { registerToursRoutes } = require("./tours");
 
 
-function registerRoutes(app, { pool }) 
+function registerRoutes(app, { pool, upload })
 {
     registerEventRegistrationRoutes(app, { pool });
-    registerEventRoutes(app, { pool });
+    registerEventRoutes(app, { pool, upload });
     registerDepartmentRoutes(app, { pool });
     registerAuthenticationRoutes(app, { pool });
     registerDashboardRoutes(app, { pool });
     registerPurchaseTicketRoutes(app, { pool });
     registerQueriesRoutes(app, { pool });
     registerReportsRoutes(app, { pool });
-    registerArtistRoutes(app, { pool });
-    registerArtworkRoutes(app, { pool });
+    registerArtistRoutes(app, { pool, upload });
+    registerArtworkRoutes(app, { pool, upload });
     registerMembershipRoutes(app, { pool });
-    registerExhibitionRoutes(app, { pool });
+    registerExhibitionRoutes(app, { pool, upload });
     registerEmployeeRoutes(app, { pool });
     registerAdmissionRoutes(app, { pool });
-    registerGiftShopRoutes(app, { pool });
-    registerCafeRoutes(app, { pool });
+    registerGiftShopRoutes(app, { pool, upload });
+    registerCafeRoutes(app, { pool, upload });
     registerScheduleRoutes(app, { pool });
     registerConservationRoutes(app, { pool });
     registerLoansRoutes(app, { pool });
-    registerToursRoutes(app, { pool });
+    registerToursRoutes(app, { pool, upload });
 }
 
 module.exports = { registerRoutes };

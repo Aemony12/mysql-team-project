@@ -9,7 +9,6 @@ const {
   renderPager,
   renderPage,
   requireLogin,
-  sanitizeImageUrl,
   setFlash,
   allowRoles,
   logTriggerViolation
@@ -29,7 +28,7 @@ async function hasColumn(pool, tableName, columnName) {
   return rows.length > 0;
 }
 
-function registerArtistRoutes(app, { pool }) {
+function registerArtistRoutes(app, { pool, upload }) {
   app.get("/add-artist", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const artistPage = getPageNumber(req.query.artist_page);
     const hasImageUrlColumn = await hasColumn(pool, "Artist", "Image_URL");
@@ -75,7 +74,7 @@ function registerArtistRoutes(app, { pool }) {
       <section class="card narrow">
         <h1>${editArtist ? "Edit Artist" : "Create Artist Record"}</h1>
         ${renderFlash(req)}
-        <form method="post" action="/add-artist" class="form-grid">
+        <form method="post" action="/add-artist" class="form-grid" enctype="multipart/form-data">
           ${editArtist ? `<input type="hidden" name="artist_id" value="${editArtist.Artist_ID}">` : ""}
           <label>
             Artist Name
@@ -87,7 +86,8 @@ function registerArtistRoutes(app, { pool }) {
           </label>
           <label>
             Image
-            <input type="text" name="image_url" value="${editArtist ? escapeHtml(editArtist.Image_URL || "") : ""}" placeholder="jacopo-da-empoli.jpg, /images/jacopo-da-empoli.jpg, or https://...">
+            ${editArtist && editArtist.Image_URL ? `<img src="${escapeHtml(editArtist.Image_URL)}" alt="Current image" class="table-thumb" style="display:block;margin-bottom:4px;">` : ""}
+            <input type="file" name="image_file" accept="image/*">
           </label>
           <label>
             Date of Birth
@@ -135,13 +135,13 @@ function registerArtistRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/add-artist", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
+  app.post("/add-artist", requireLogin, allowRoles(["supervisor", "curator"]), upload.single("image_file"), asyncHandler(async (req, res) => {
     const id = req.body.artist_id || null;
     const name = req.body.name?.trim();
     const dob = req.body.dob || null;
     const dod = req.body.still_alive === '1' ? null : (req.body.dod || null);
     const birthplace = req.body.birthplace?.trim() || null;
-    const imageUrl = sanitizeImageUrl(req.body.image_url) || null;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const hasImageUrlColumn = await hasColumn(pool, "Artist", "Image_URL");
 
     if (!name) {
@@ -151,7 +151,7 @@ function registerArtistRoutes(app, { pool }) {
 
     if (id) {
       try {
-        if (hasImageUrlColumn) {
+        if (hasImageUrlColumn && req.file) {
           await pool.query(
             `UPDATE Artist
              SET Artist_Name = ?, Birth_Place = ?, Date_of_Birth = ?, Date_of_Death = ?, Image_URL = ?

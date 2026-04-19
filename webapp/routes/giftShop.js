@@ -7,7 +7,6 @@ const {
   renderFlash,
   renderPage,
   requireLogin,
-  sanitizeImageUrl,
   setFlash,
   allowRoles,
   logTriggerViolation
@@ -27,7 +26,7 @@ async function hasColumn(pool, tableName, columnName) {
   return rows.length > 0;
 }
 
-function registerGiftShopRoutes(app, { pool }) {
+function registerGiftShopRoutes(app, { pool, upload }) {
 
   app.get("/add-item", requireLogin, allowRoles(["giftshop", "supervisor"]), asyncHandler(async (req, res) => {
     const hasImageUrlColumn = await hasColumn(pool, "Gift_Shop_Item", "Image_URL");
@@ -87,7 +86,7 @@ function registerGiftShopRoutes(app, { pool }) {
       <section class="card narrow">
         <h1>${editItem ? "Edit Gift Shop Item" : "Add Gift Shop Item"}</h1>
         ${renderFlash(req)}
-        <form method="post" action="/add-item" class="form-grid">
+        <form method="post" action="/add-item" class="form-grid" enctype="multipart/form-data">
           ${editItem ? `<input type="hidden" name="item_id" value="${editItem.Gift_Shop_Item_ID}">` : ""}
           <label>Name
             <input type="text" name="name" 
@@ -102,8 +101,9 @@ function registerGiftShopRoutes(app, { pool }) {
             value="${editItem ? editItem.Stock_Quantity : ""}" required>
           </label>
           <label>Image
-            <input type="text" name="image_url"
-            value="${editItem ? escapeHtml(editItem.Image_URL || "") : ""}" placeholder="tote.jpg, /images/tote.jpg, or https://...">
+            ${editItem && editItem.Image_URL ? `<img src="${escapeHtml(editItem.Image_URL)}" alt="current" class="table-thumb" style="display:block;margin-bottom:0.25rem;">` : ""}
+            <input type="file" name="image_file" accept="image/*">
+            ${editItem ? `<small style="color:#888">Leave empty to keep current image</small>` : ""}
           </label>
           <button class="button" type="submit">
               ${editItem ? "Save Item" : "Create Item"}
@@ -133,10 +133,10 @@ function registerGiftShopRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/add-item", requireLogin, allowRoles(["giftshop", "supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/add-item", requireLogin, allowRoles(["giftshop", "supervisor"]), upload.single("image_file"), asyncHandler(async (req, res) => {
     const itemId = req.body.item_id || null;
     const { name, price, stock } = req.body;
-    const imageUrl = sanitizeImageUrl(req.body.image_url) || null;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const hasImageUrlColumn = await hasColumn(pool, "Gift_Shop_Item", "Image_URL");
     const parsedPrice = Number.parseFloat(price);
     const parsedStock = Number.parseInt(stock, 10);
@@ -157,7 +157,7 @@ function registerGiftShopRoutes(app, { pool }) {
     }
 
     if (itemId) {
-      if (hasImageUrlColumn) {
+      if (hasImageUrlColumn && req.file) {
         await pool.query(
           `UPDATE Gift_Shop_Item
           SET Name_of_Item = ?, Price_of_Item = ?, Stock_Quantity = ?, Image_URL = ?
@@ -217,38 +217,44 @@ function registerGiftShopRoutes(app, { pool }) {
 
   app.get("/add-sale", requireLogin, allowRoles(["giftshop", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const hasImageUrlColumn = await hasColumn(pool, "Gift_Shop_Item", "Image_URL");
-    const [sales] = await pool.query(`
+    const [salesLines] = await pool.query(`
       SELECT
         gs.Gift_Shop_Sale_ID,
         gs.Sale_Date,
         gs.Employee_ID,
-        (
-          SELECT i.Name_of_Item
-          FROM Gift_Shop_Sale_Line gsl
-          JOIN Gift_Shop_Item i ON i.Gift_Shop_Item_ID = gsl.Gift_Shop_Item_ID
-          WHERE gsl.Gift_Shop_Sale_ID = gs.Gift_Shop_Sale_ID
-          ORDER BY gsl.Gift_Shop_Item_ID
-          LIMIT 1
-        ) AS First_Item_Name,
-        (
-          SELECT i.Category
-          FROM Gift_Shop_Sale_Line gsl
-          JOIN Gift_Shop_Item i ON i.Gift_Shop_Item_ID = gsl.Gift_Shop_Item_ID
-          WHERE gsl.Gift_Shop_Sale_ID = gs.Gift_Shop_Sale_ID
-          ORDER BY gsl.Gift_Shop_Item_ID
-          LIMIT 1
-        ) AS First_Item_Category,
-        (
-          SELECT ${hasImageUrlColumn ? "i.Image_URL" : "NULL"}
-          FROM Gift_Shop_Sale_Line gsl
-          JOIN Gift_Shop_Item i ON i.Gift_Shop_Item_ID = gsl.Gift_Shop_Item_ID
-          WHERE gsl.Gift_Shop_Sale_ID = gs.Gift_Shop_Sale_ID
-          ORDER BY gsl.Gift_Shop_Item_ID
-          LIMIT 1
-        ) AS First_Item_Image_URL
+        i.Name_of_Item,
+        gsl.Quantity,
+        gsl.Price_When_Item_is_Sold,
+        i.Category AS Item_Category
       FROM Gift_Shop_Sale gs
-      ORDER BY gs.Sale_Date DESC, gs.Gift_Shop_Sale_ID DESC
+      LEFT JOIN Gift_Shop_Sale_Line gsl ON gsl.Gift_Shop_Sale_ID = gs.Gift_Shop_Sale_ID
+      LEFT JOIN Gift_Shop_Item i ON i.Gift_Shop_Item_ID = gsl.Gift_Shop_Item_ID
+      ORDER BY gs.Gift_Shop_Sale_ID DESC, gsl.Gift_Shop_Item_ID
     `);
+    const ordersMap = new Map();
+    for (const row of salesLines) {
+      if (!ordersMap.has(row.Gift_Shop_Sale_ID)) {
+        ordersMap.set(row.Gift_Shop_Sale_ID, {
+          Gift_Shop_Sale_ID: row.Gift_Shop_Sale_ID,
+          Sale_Date: row.Sale_Date,
+          Employee_ID: row.Employee_ID,
+          items: [],
+          orderTotal: 0,
+        });
+      }
+      if (row.Name_of_Item != null) {
+        const order = ordersMap.get(row.Gift_Shop_Sale_ID);
+        order.items.push({
+          Name_of_Item: row.Name_of_Item,
+          Quantity: row.Quantity,
+          Item_Category: row.Item_Category,
+          Price: row.Price_When_Item_is_Sold,
+        });
+        order.orderTotal += Number(row.Quantity || 0) * Number(row.Price_When_Item_is_Sold || 0);
+      }
+    }
+    const orders = Array.from(ordersMap.values());
+    const allCategories = [...new Set(orders.flatMap(o => o.items.map(i => i.Item_Category).filter(Boolean)))].sort();
     let editSale = null;
 
     // Daily sales summary
@@ -276,27 +282,34 @@ function registerGiftShopRoutes(app, { pool }) {
         );
         editSale = rows[0] || null;
       }
-    const saleRows = sales.map((sale) => {
-      const itemName = sale.First_Item_Name || "Sale pending items";
-      const asset = getGiftShopAsset(itemName, sale.First_Item_Category, sale.First_Item_Image_URL);
-      return `
-      <tr>
-        <td><img src="${asset.imagePath}" alt="${asset.alt}" class="table-thumb"></td>
-        <td>${escapeHtml(itemName)}</td>
-        <td>${formatDisplayDate(sale.Sale_Date)}</td>
-        <td>${escapeHtml(sale.Employee_ID)}</td>
-        <td class="actions">
-        <form method="post" action="/load-gift-sale" class="inline-form">
-            <input type="hidden" name="sale_id" value="${sale.Gift_Shop_Sale_ID}">
+    const saleRows = orders.map((order) => {
+      const dateTs = order.Sale_Date ? new Date(order.Sale_Date).getTime() : 0;
+      const itemCats = order.items.map(i => (i.Item_Category || "").toLowerCase()).filter(Boolean).join(",");
+      const itemsHtml = order.items.length > 0
+        ? order.items.map((item) => {
+            const catTag = item.Item_Category
+              ? `<span style="font-size:0.72em;background:#f0f4f8;color:#556;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;">${escapeHtml(item.Item_Category)}</span>`
+              : "";
+            return `<div style="margin-bottom:2px;">${escapeHtml(item.Name_of_Item)} &times; ${item.Quantity}${catTag}</div>`;
+          }).join("")
+        : `<span style="color:#aaa">No items yet</span>`;
+      return `<div data-order-id="${order.Gift_Shop_Sale_ID}" data-date="${dateTs}" data-total="${order.orderTotal.toFixed(2)}" data-cats="${escapeHtml(itemCats)}" style="display:grid;grid-template-columns:55px 1fr 75px 95px 80px auto;gap:0.5rem;padding:0.5rem 0.75rem;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:4px;align-items:start;background:#fff;">
+        <strong style="padding-top:2px;">#${order.Gift_Shop_Sale_ID}</strong>
+        <div>${itemsHtml}</div>
+        <span style="font-weight:600;padding-top:2px;white-space:nowrap;">$${order.orderTotal.toFixed(2)}</span>
+        <span style="color:#555;padding-top:2px;white-space:nowrap;">${formatDisplayDate(order.Sale_Date)}</span>
+        <span style="color:#555;padding-top:2px;">${escapeHtml(String(order.Employee_ID))}</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <form method="post" action="/load-gift-sale" class="inline-form">
+            <input type="hidden" name="sale_id" value="${order.Gift_Shop_Sale_ID}">
             <button class="link-button" type="submit">Edit</button>
           </form>
           <form method="post" action="/delete-sale" class="inline-form" onsubmit="return confirm('Delete this sale?');">
-            <input type="hidden" name="sale_id" value="${sale.Gift_Shop_Sale_ID}">
+            <input type="hidden" name="sale_id" value="${order.Gift_Shop_Sale_ID}">
             <button class="link-button danger" type="submit">Delete</button>
           </form>
-        </td>
-      </tr>
-    `;
+        </div>
+      </div>`;
     }).join("");
 
     res.send(renderPage({
@@ -337,18 +350,34 @@ function registerGiftShopRoutes(app, { pool }) {
       </section>
       <section class="card narrow">
         <h2>Recent Sales</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Image</th>
-              <th>Item</th>
-              <th>Date</th>
-              <th>Employee ID</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>${saleRows || '<tr><td colspan="5">No sales found.</td></tr>'}</tbody>
-        </table>
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9em;font-weight:600;white-space:nowrap;align-self:center;">
+            Sort
+            <select id="gs-sort" style="padding:0.25rem 0.5rem;border-radius:4px;border:1px solid #ccc;font-size:0.9em;">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="expensive">Most expensive</option>
+              <option value="cheapest">Least expensive</option>
+            </select>
+          </label>
+          <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9em;font-weight:600;white-space:nowrap;align-self:center;">
+            Sale ID
+            <input type="text" id="gs-id-search" placeholder="Search…" style="width:80px;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid #ccc;font-size:0.9em;">
+          </label>
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;align-self:center;">
+            <span style="font-size:0.9em;font-weight:600;white-space:nowrap;">Category:</span>
+            ${allCategories.length > 0
+              ? allCategories.map(c => `<label style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.65rem;border-radius:999px;border:1px solid #ccc;cursor:pointer;font-size:0.82em;background:#fff;white-space:nowrap;user-select:none;"><input type="checkbox" class="gs-cat-cb" value="${escapeHtml(c.toLowerCase())}" style="margin:0;accent-color:#8f4a43;"> ${escapeHtml(c)}</label>`).join("")
+              : `<span style="color:#aaa;font-size:0.85em;">No categories found</span>`}
+          </div>
+          <span id="gs-order-count" style="color:#888;font-size:0.85em;margin-left:auto;align-self:center;"></span>
+        </div>
+        <div id="gs-orders-list">
+          <div style="display:grid;grid-template-columns:55px 1fr 75px 95px 80px auto;gap:0.5rem;padding:0.4rem 0.75rem;background:#f5f5f5;border-radius:4px;font-size:0.8em;font-weight:600;color:#666;margin-bottom:6px;border:1px solid #e5e7eb;">
+            <span>Sale</span><span>Items</span><span>Total</span><span>Date</span><span>Employee</span><span>Actions</span>
+          </div>
+          ${saleRows || '<p style="color:#888;padding:0.5rem 0;">No sales found.</p>'}
+        </div>
       </section>
     `,
     }));
@@ -526,13 +555,44 @@ function registerGiftShopRoutes(app, { pool }) {
     const total = price * quantity;
 
     if (original_item) {
-      await pool.query(
-      `UPDATE Gift_Shop_Sale_Line
-       SET Quantity = ?, Total_Sum_For_Gift_Shop_Sale = ?
-       WHERE Gift_Shop_Sale_ID = ? AND Gift_Shop_Item_ID = ?`,
-      [quantity, total, saleId, original_item],
-    );
-    setFlash(req, "Sale line updated.");
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        const [[currentLine]] = await connection.query(
+          "SELECT Quantity FROM Gift_Shop_Sale_Line WHERE Gift_Shop_Sale_ID = ? AND Gift_Shop_Item_ID = ? FOR UPDATE",
+          [saleId, original_item],
+        );
+        const [[stockRow]] = await connection.query(
+          "SELECT Stock_Quantity, Name_of_Item FROM Gift_Shop_Item WHERE Gift_Shop_Item_ID = ? FOR UPDATE",
+          [original_item],
+        );
+        const oldQty = currentLine ? currentLine.Quantity : 0;
+        const newQty = parseInt(quantity, 10);
+        const delta = newQty - oldQty;
+        if (delta > 0 && (!stockRow || stockRow.Stock_Quantity < delta)) {
+          await connection.rollback();
+          setFlash(req, `Not enough stock for ${stockRow ? stockRow.Name_of_Item : "this item"}.`);
+          return res.redirect("/add-sale-line");
+        }
+        await connection.query(
+          `UPDATE Gift_Shop_Sale_Line
+           SET Quantity = ?, Total_Sum_For_Gift_Shop_Sale = ?
+           WHERE Gift_Shop_Sale_ID = ? AND Gift_Shop_Item_ID = ?`,
+          [newQty, total, saleId, original_item],
+        );
+        await connection.commit();
+        setFlash(req, "Sale line updated.");
+      } catch (err) {
+        await connection.rollback();
+        if (err.sqlState === "45000") {
+          await logTriggerViolation(pool, req, err.sqlMessage, `Gift Shop · Sale #${saleId} · item quantity edit`);
+          setFlash(req, err.sqlMessage || "Update blocked by a stock rule.");
+        } else {
+          throw err;
+        }
+      } finally {
+        connection.release();
+      }
   } else {
     try {
       await pool.query(
@@ -544,7 +604,7 @@ function registerGiftShopRoutes(app, { pool }) {
       setFlash(req, "Item added to sale.");
     } catch (err) {
       if (err.sqlState === "45000") {
-        await logTriggerViolation(pool, req, err.sqlMessage);
+        await logTriggerViolation(pool, req, err.sqlMessage, `Gift Shop · Sale #${saleId} · add item to sale`);
         setFlash(req, err.sqlMessage);
       } else {
         throw err;
@@ -816,17 +876,23 @@ function registerGiftShopRoutes(app, { pool }) {
       return res.redirect("/gift-order");
     }
 
-    for (const item of cart) {
-      const [[stock]] = await pool.query("SELECT Stock_Quantity, Name_of_Item FROM Gift_Shop_Item WHERE Gift_Shop_Item_ID = ?", [item.id]);
-      if (!stock || stock.Stock_Quantity < item.qty) {
-        setFlash(req, `Not enough stock for "${stock?.Name_of_Item || 'item'}". Available: ${stock?.Stock_Quantity ?? 0}.`);
-        return res.redirect("/gift-order/checkout");
-      }
-    }
-
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
+
+      // Lock each item row inside the transaction (FOR UPDATE) so concurrent
+      // checkouts cannot read stale stock between the check and the deduction.
+      for (const item of cart) {
+        const [[stock]] = await connection.query(
+          "SELECT Stock_Quantity, Name_of_Item FROM Gift_Shop_Item WHERE Gift_Shop_Item_ID = ? FOR UPDATE",
+          [item.id]
+        );
+        if (!stock || stock.Stock_Quantity < item.qty) {
+          await connection.rollback();
+          setFlash(req, `Not enough stock for "${stock?.Name_of_Item || "item"}". Available: ${stock?.Stock_Quantity ?? 0}.`);
+          return res.redirect("/gift-order");
+        }
+      }
 
       const [result] = await connection.query(
         "INSERT INTO Gift_Shop_Sale (Sale_Date, Employee_ID) VALUES (CURDATE(), ?)",
@@ -849,6 +915,13 @@ function registerGiftShopRoutes(app, { pool }) {
       setFlash(req, `Order #${saleId} completed. Total: $${orderTotal.toFixed(2)}`);
     } catch (error) {
       await connection.rollback();
+      // Catch trigger-level SIGNAL errors (e.g. "Insufficient stock") and
+      // show them as a user-friendly flash rather than crashing with a 500.
+      if (error.sqlState === "45000") {
+        await logTriggerViolation(pool, req, error.sqlMessage, "Gift Shop · Checkout");
+        setFlash(req, error.sqlMessage || "Stock check failed. Please review your cart.");
+        return res.redirect("/gift-order");
+      }
       throw error;
     } finally {
       connection.release();

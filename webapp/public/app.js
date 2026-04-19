@@ -218,6 +218,9 @@
       initHeroVideoToggle();
       initRecordCards(root);
       initPosFilters();
+      initCafeOrders();
+      initGiftOrders();
+      initTourRoster();
     };
 
     const loadSupervisorPage = async (url, pushState = true) => {
@@ -417,6 +420,109 @@
 
     membershipSelect.addEventListener("change", refreshPrices);
     refreshPrices();
+  };
+
+  const initCafeOrders = () => {
+    const list = document.getElementById("cafe-orders-list");
+    if (!list || list.dataset.cafeOrdersReady === "true") return;
+    list.dataset.cafeOrdersReady = "true";
+    const sortSel = document.getElementById("cafe-sort");
+    const idInput = document.getElementById("cafe-id-search");
+    const countEl = document.getElementById("cafe-order-count");
+    const update = () => {
+      const sv = sortSel ? sortSel.value : "newest";
+      const idVal = idInput ? idInput.value.trim() : "";
+      const checked = Array.from(document.querySelectorAll(".cafe-type-cb:checked")).map((c) => c.value);
+      const rows = Array.from(list.querySelectorAll("[data-order-id]"));
+      rows.forEach((r) => {
+        const types = (r.dataset.types || "").split(",").filter(Boolean);
+        const oid = String(r.dataset.orderId || "");
+        const passType = checked.length === 0 || checked.every((t) => types.includes(t));
+        const passId = !idVal || oid.includes(idVal);
+        r.style.display = passType && passId ? "" : "none";
+      });
+      rows.sort((a, b) => {
+        if (sv === "newest") return Number(b.dataset.date) - Number(a.dataset.date);
+        if (sv === "oldest") return Number(a.dataset.date) - Number(b.dataset.date);
+        if (sv === "expensive") return Number(b.dataset.total) - Number(a.dataset.total);
+        if (sv === "cheapest") return Number(a.dataset.total) - Number(b.dataset.total);
+        return 0;
+      });
+      rows.forEach((r) => list.appendChild(r));
+      const vis = rows.filter((r) => r.style.display !== "none");
+      if (countEl) countEl.textContent = vis.length + " order" + (vis.length !== 1 ? "s" : "");
+    };
+    if (sortSel) sortSel.addEventListener("change", update);
+    if (idInput) idInput.addEventListener("input", update);
+    document.querySelectorAll(".cafe-type-cb").forEach((cb) => cb.addEventListener("change", update));
+    update();
+  };
+
+  const initGiftOrders = () => {
+    const list = document.getElementById("gs-orders-list");
+    if (!list || list.dataset.gsOrdersReady === "true") return;
+    list.dataset.gsOrdersReady = "true";
+    const sortSel = document.getElementById("gs-sort");
+    const idInput = document.getElementById("gs-id-search");
+    const countEl = document.getElementById("gs-order-count");
+    const update = () => {
+      const sv = sortSel ? sortSel.value : "newest";
+      const idVal = idInput ? idInput.value.trim() : "";
+      const checked = Array.from(document.querySelectorAll(".gs-cat-cb:checked")).map((c) => c.value);
+      const rows = Array.from(list.querySelectorAll("[data-order-id]"));
+      rows.forEach((r) => {
+        const cats = (r.dataset.cats || "").split(",").filter(Boolean);
+        const oid = String(r.dataset.orderId || "");
+        const passCat = checked.length === 0 || checked.every((c) => cats.includes(c));
+        const passId = !idVal || oid.includes(idVal);
+        r.style.display = passCat && passId ? "" : "none";
+      });
+      rows.sort((a, b) => {
+        if (sv === "newest") return Number(b.dataset.date) - Number(a.dataset.date);
+        if (sv === "oldest") return Number(a.dataset.date) - Number(b.dataset.date);
+        if (sv === "expensive") return Number(b.dataset.total) - Number(a.dataset.total);
+        if (sv === "cheapest") return Number(a.dataset.total) - Number(b.dataset.total);
+        return 0;
+      });
+      rows.forEach((r) => list.appendChild(r));
+      const vis = rows.filter((r) => r.style.display !== "none");
+      if (countEl) countEl.textContent = vis.length + " sale" + (vis.length !== 1 ? "s" : "");
+    };
+    if (sortSel) sortSel.addEventListener("change", update);
+    if (idInput) idInput.addEventListener("input", update);
+    document.querySelectorAll(".gs-cat-cb").forEach((cb) => cb.addEventListener("change", update));
+    update();
+  };
+
+  const initTourRoster = () => {
+    const list = document.getElementById("tour-roster-list"); // <tbody>
+    if (!list || list.dataset.rosterReady === "true") return;
+    list.dataset.rosterReady = "true";
+    const sortSel = document.getElementById("roster-sort");
+    const idInput = document.getElementById("roster-id-search");
+    const countEl = document.getElementById("roster-count");
+    const update = () => {
+      const sv = sortSel ? sortSel.value : "newest";
+      const idVal = idInput ? idInput.value.trim() : "";
+      const rows = Array.from(list.querySelectorAll("[data-order-id]"));
+      rows.forEach((r) => {
+        const mid = String(r.dataset.orderId || "");
+        r.style.display = !idVal || mid.includes(idVal) ? "" : "none";
+      });
+      rows.sort((a, b) => {
+        if (sv === "newest") return Number(b.dataset.date) - Number(a.dataset.date);
+        if (sv === "oldest") return Number(a.dataset.date) - Number(b.dataset.date);
+        if (sv === "az") return (a.dataset.name || "").localeCompare(b.dataset.name || "");
+        if (sv === "za") return (b.dataset.name || "").localeCompare(a.dataset.name || "");
+        return 0;
+      });
+      rows.forEach((r) => list.appendChild(r));
+      const vis = rows.filter((r) => r.style.display !== "none");
+      if (countEl) countEl.textContent = vis.length + " member" + (vis.length !== 1 ? "s" : "");
+    };
+    if (sortSel) sortSel.addEventListener("change", update);
+    if (idInput) idInput.addEventListener("input", update);
+    update();
   };
 
   const initPosFilters = () => {
@@ -721,7 +827,7 @@
     const tables = Array.from(root.querySelectorAll("section table"));
 
     tables.forEach((table) => {
-      if (table.dataset.cardEnhanced === "true") {
+      if (table.dataset.cardEnhanced === "true" || table.dataset.noCards === "true") {
         return;
       }
 
@@ -780,13 +886,20 @@
         const statusValue = statusIndex >= 0 ? cells[statusIndex]?.textContent.trim() : "";
         const stockText = statusValue || (stockValue ? `${stockValue} in stock` : "");
         const stockNumber = Number.parseInt(stockValue, 10);
-        const stockTone = statusValue.toLowerCase().includes("out") || stockNumber === 0
+        const statusLower = statusValue.toLowerCase();
+        const stockTone = statusLower === "expired"
+          ? "warning"
+          : statusLower === "cancelled" || statusLower === "canceled"
           ? "danger"
-          : statusValue.toLowerCase().includes("low") || (Number.isInteger(stockNumber) && stockNumber <= 5)
-            ? "warning"
-            : stockText
-              ? "success"
-              : "";
+          : statusLower === "active"
+          ? "success"
+          : statusLower.includes("out") || stockNumber === 0
+            ? "danger"
+            : statusLower.includes("low") || (Number.isInteger(stockNumber) && stockNumber <= 5)
+              ? "warning"
+              : stockText
+                ? "success"
+                : "";
         const card = document.createElement("article");
         card.className = "record-card";
         card.tabIndex = 0;
@@ -843,6 +956,9 @@
   initDateRangeValidation();
   initTicketPricing();
   initPosFilters();
+  initCafeOrders();
+  initGiftOrders();
+  initTourRoster();
   initTypewriter();
   initBackToTop();
   initAjaxPagination();

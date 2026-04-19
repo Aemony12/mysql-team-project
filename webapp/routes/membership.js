@@ -37,10 +37,12 @@ function registerMembershipRoutes(app, { pool }) {
     const membershipPagination = paginateRows(members, membershipPage);
 
     const memberRows = membershipPagination.items.map((m) => {
-      const statusColor = m.Status === "Active" ? "#dcfce7"
-                        : m.Status === "Expired"   ? "#fee2e2"
-                        : "#e5e7eb"; // Cancelled = grey
-      const badge = `<span style="background:${statusColor}; padding:2px 8px; border-radius:4px; font-size:0.82em; font-weight:600;">${escapeHtml(m.Status)}</span>`;
+      const statusStyle = m.Status === "Active"
+        ? "background:#dcfce7; color:#166534;"
+        : m.Status === "Expired"
+        ? "background:#ffedd5; color:#9a3412;"
+        : "background:#fee2e2; color:#991b1b;";
+      const badge = `<span style="${statusStyle} padding:2px 8px; border-radius:4px; font-size:0.82em; font-weight:600;">${escapeHtml(m.Status)}</span>`;
 
       const actionButtons = [];
 
@@ -183,9 +185,14 @@ function registerMembershipRoutes(app, { pool }) {
       await pool.query(
         `UPDATE Membership
          SET First_Name = ?, Last_Name = ?, Email = ?, Phone_Number = ?, Date_Joined = ?,
+             Status = CASE
+               WHEN Status = 'Cancelled' THEN Status
+               WHEN DATE_ADD(?, INTERVAL 1 YEAR) < CURDATE() THEN 'Expired'
+               ELSE 'Active'
+             END,
              Updated_By = ?
          WHERE Membership_ID = ?`,
-        [firstName, lastName, email || null, phone || null, dateJoined, req.session.user.email, id]
+        [firstName, lastName, email || null, phone || null, dateJoined, dateJoined, req.session.user.email, id]
       );
       setFlash(req, "Membership updated.");
     } else {

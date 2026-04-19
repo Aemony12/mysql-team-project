@@ -2002,3 +2002,46 @@ body.theme-curator .query-tab-shell + .tab-panel td:nth-child(4) {
 .pos-filter-bar input[type="search"] {
   min-height: 2.7rem;
 }
+
+/* ── Header: Staff Login → solid slate-gray ────────────────────────────── */
+.session-meta a.session-chip,
+body.page-home .session-meta a.session-chip {
+  background: var(--header);
+  border-color: var(--header);
+  color: #fff;
+}
+
+.session-meta a.session-chip:hover,
+body.page-home .session-meta a.session-chip:hover {
+  background: var(--header-line);
+  border-color: var(--header-line);
+  color: #fff;
+}
+
+/* ── Header: Member Login → museum red ─────────────────────────────────── */
+.session-meta a.link-button,
+body.page-home .session-meta a.link-button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.session-meta a.link-button:hover,
+body.page-home .session-meta a.link-button:hover {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: #fff;
+}
+
+/* ── Home hero: Staff Login secondary button → solid slate-gray ─────────── */
+body.page-home .media-hero .button-secondary {
+  background: var(--header);
+  border-color: var(--header);
+  color: #fff;
+}
+
+body.page-home .media-hero .button-secondary:hover {
+  background: var(--header-line);
+  border-color: var(--header-line);
+  color: #fff;
+}

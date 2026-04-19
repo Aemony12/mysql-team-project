@@ -9,7 +9,6 @@ const {
   renderPager,
   renderPage,
   requireLogin,
-  sanitizeImageUrl,
   setFlash,
   allowRoles,
   logTriggerViolation
@@ -29,7 +28,7 @@ async function hasColumn(pool, tableName, columnName) {
   return rows.length > 0;
 }
 
-function registerEventRoutes(app, { pool }) {
+function registerEventRoutes(app, { pool, upload }) {
   app.get("/add-event", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const eventPage = getPageNumber(req.query.event_page);
     const hasImageUrlColumn = await hasColumn(pool, "Event", "Image_URL");
@@ -86,13 +85,14 @@ function registerEventRoutes(app, { pool }) {
       <section class="card narrow">
         <h1>${editEvent ? "Edit Event" : "Add Event"}</h1>
         ${renderFlash(req)}
-        <form method="post" action="/add-event" class="form-grid">
+        <form method="post" action="/add-event" class="form-grid" enctype="multipart/form-data">
           ${editEvent ? `<input type="hidden" name="event_id" value="${editEvent.event_ID}">` : ""}
           <label>Event Name
             <input type="text" name="name" value="${editEvent ? escapeHtml(editEvent.event_Name) : ""}" required>
           </label>
           <label>Image
-            <input type="text" name="image_url" value="${editEvent ? escapeHtml(editEvent.Image_URL || "") : ""}" placeholder="spring-exhibition-opening-gala.jpg, /images/spring-exhibition-opening-gala.jpg, or https://...">
+            ${editEvent && editEvent.Image_URL ? `<img src="${escapeHtml(editEvent.Image_URL)}" alt="Current image" class="table-thumb" style="display:block;margin-bottom:4px;">` : ""}
+            <input type="file" name="image_file" accept="image/*">
           </label>
           <label>Start Date
             <input type="date" name="start_date" value="${editEvent ? formatDateInput(editEvent.start_Date) : ""}" required>
@@ -149,7 +149,7 @@ function registerEventRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/add-event", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/add-event", requireLogin, allowRoles(["supervisor"]), upload.single("image_file"), asyncHandler(async (req, res) => {
     const id = req.body.event_id || null;
     const {
       name,
@@ -159,7 +159,7 @@ function registerEventRoutes(app, { pool }) {
       member_only: memberOnly,
       coordinator_id: coordinatorId,
     } = req.body;
-    const imageUrl = sanitizeImageUrl(req.body.image_url) || null;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const hasImageUrlColumn = await hasColumn(pool, "Event", "Image_URL");
 
     if (!name || !startDate || !endDate || !maxCapacity) {
@@ -169,7 +169,7 @@ function registerEventRoutes(app, { pool }) {
 
     try {
       if (id) {
-        if (hasImageUrlColumn) {
+        if (hasImageUrlColumn && req.file) {
           await pool.query(
             `UPDATE Event
              SET event_Name = ?, start_Date = ?, end_Date = ?,

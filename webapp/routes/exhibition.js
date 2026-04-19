@@ -9,7 +9,6 @@ const {
   renderPager,
   renderPage,
   requireLogin,
-  sanitizeImageUrl,
   setFlash,
   allowRoles,
   logTriggerViolation
@@ -29,7 +28,7 @@ async function hasColumn(pool, tableName, columnName) {
   return rows.length > 0;
 }
 
-function registerExhibitionRoutes(app, { pool }) {
+function registerExhibitionRoutes(app, { pool, upload }) {
   app.get("/add-exhibition", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const exhibitionPage = getPageNumber(req.query.exhibition_page);
     const hasImageUrlColumn = await hasColumn(pool, "Exhibition", "Image_URL");
@@ -74,13 +73,14 @@ function registerExhibitionRoutes(app, { pool }) {
       <section class="card narrow">
         <h1>${editExhibition ? "Edit Exhibition" : "Create Exhibition"}</h1>
         ${renderFlash(req)}
-        <form method="post" action="/add-exhibition" class="form-grid">
+        <form method="post" action="/add-exhibition" class="form-grid" enctype="multipart/form-data">
           ${editExhibition ? `<input type="hidden" name="exhibition_id" value="${editExhibition.Exhibition_ID}">` : ""}
           <label>Exhibition Name
             <input type="text" name="name" value="${editExhibition ? escapeHtml(editExhibition.Exhibition_Name) : ""}" required>
           </label>
           <label>Image
-            <input type="text" name="image_url" value="${editExhibition ? escapeHtml(editExhibition.Image_URL || "") : ""}" placeholder="spring-collection.jpg, /images/spring-collection.jpg, or https://...">
+            ${editExhibition && editExhibition.Image_URL ? `<img src="${escapeHtml(editExhibition.Image_URL)}" alt="Current image" class="table-thumb" style="display:block;margin-bottom:4px;">` : ""}
+            <input type="file" name="image_file" accept="image/*">
           </label>
           <label>Start Date
             <input type="date" name="start_date" value="${editExhibition ? formatDateInput(editExhibition.Starting_Date) : ""}" min="${today}" required>
@@ -115,10 +115,10 @@ function registerExhibitionRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/add-exhibition", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
+  app.post("/add-exhibition", requireLogin, allowRoles(["supervisor", "curator"]), upload.single("image_file"), asyncHandler(async (req, res) => {
     const id = req.body.exhibition_id || null;
     const { name, start_date: startDate, end_date: endDate } = req.body;
-    const imageUrl = sanitizeImageUrl(req.body.image_url) || null;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const hasImageUrlColumn = await hasColumn(pool, "Exhibition", "Image_URL");
 
     if (!name || !startDate || !endDate) {
@@ -139,7 +139,7 @@ function registerExhibitionRoutes(app, { pool }) {
 
     try {
       if (id) {
-        if (hasImageUrlColumn) {
+        if (hasImageUrlColumn && req.file) {
           await pool.query(
             `UPDATE Exhibition
              SET Exhibition_Name = ?, Starting_Date = ?, Ending_Date = ?, Image_URL = ?

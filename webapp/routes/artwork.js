@@ -10,7 +10,6 @@ const {
   renderPager,
   renderPage,
   requireLogin,
-  sanitizeImageUrl,
   setFlash,
   allowRoles,
   logTriggerViolation
@@ -30,7 +29,7 @@ async function hasColumn(pool, tableName, columnName) {
   return rows.length > 0;
 }
 
-function registerArtworkRoutes (app, { pool }) {
+function registerArtworkRoutes(app, { pool, upload }) {
     app.get("/add-artwork", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
     const artworkPage = getPageNumber(req.query.artwork_page);
     const hasImageUrlColumn = await hasColumn(pool, "Artwork", "Image_URL");
@@ -86,7 +85,7 @@ function registerArtworkRoutes (app, { pool }) {
       <section class="card narrow">
         <h1>${editArtwork ? "Edit Artwork" : "Create Artwork Record"}</h1>
         ${renderFlash(req)}
-        <form method="post" action="/add-artwork" class="form-grid">
+        <form method="post" action="/add-artwork" class="form-grid" enctype="multipart/form-data">
           ${editArtwork ? `<input type="hidden" name="artwork_id" value="${editArtwork.Artwork_ID}">` : ""}
           <label>
             Title
@@ -94,7 +93,8 @@ function registerArtworkRoutes (app, { pool }) {
           </label>
           <label>
             Image
-            <input type="text" name="image_url" value="${editArtwork ? escapeHtml(editArtwork.Image_URL || "") : ""}" placeholder="allegory.jpg, /images/allegory.jpg, or https://...">
+            ${editArtwork && editArtwork.Image_URL ? `<img src="${escapeHtml(editArtwork.Image_URL)}" alt="Current image" class="table-thumb" style="display:block;margin-bottom:4px;">` : ""}
+            <input type="file" name="image_file" accept="image/*">
           </label>
           <label>
             Type
@@ -167,13 +167,13 @@ function registerArtworkRoutes (app, { pool }) {
     }));
   }));
 
-  app.post("/add-artwork", requireLogin, allowRoles(["supervisor", "curator"]), asyncHandler(async (req, res) => {
+  app.post("/add-artwork", requireLogin, allowRoles(["supervisor", "curator"]), upload.single("image_file"), asyncHandler(async (req, res) => {
     const id = req.body.artwork_id || null;
     const title = req.body.title?.trim();
     const type = req.body.type?.trim();
     const artStyle = req.body.art_style?.trim() || null;
     const timePeriod = req.body.time_period?.trim() || null;
-    const imageUrl = sanitizeImageUrl(req.body.image_url) || null;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const artistId = req.body.artist_id;
     const hasImageUrlColumn = await hasColumn(pool, "Artwork", "Image_URL");
 
@@ -183,7 +183,7 @@ function registerArtworkRoutes (app, { pool }) {
     }
 
     if (id) {
-      if (hasImageUrlColumn) {
+      if (hasImageUrlColumn && req.file) {
         await pool.query(
           "UPDATE Artwork SET Title = ?, Type = ?, Art_Style = ?, Time_Period = ?, Artist_ID = ?, Image_URL = ? WHERE Artwork_ID = ?",
           [title, type, artStyle, timePeriod, artistId, imageUrl, id],

@@ -294,7 +294,7 @@ function sanitizeImageUrl(value) {
     return null;
   }
 
-  if (raw.startsWith("/images/")) {
+  if (raw.startsWith("/images/") || raw.startsWith("/uploads/")) {
     return raw;
   }
 
@@ -1017,11 +1017,54 @@ function allowRoles(roles) {
   };
 }
 
-async function logTriggerViolation(pool, req, message) {
+const TRIGGER_MESSAGE_MAP = {
+  "Event is fully booked":
+    "A customer tried to register for an event that is already at full capacity.",
+  "Tour is at full capacity":
+    "A tour registration was blocked because the tour has reached its maximum capacity.",
+  "Insufficient stock for this item":
+    "A gift shop sale was blocked because there is not enough stock for the requested item.",
+  "Gift shop stock cannot be negative":
+    "A gift shop inventory update was blocked because it would have set the stock count below zero.",
+  "Insufficient food stock for this item":
+    "A cafe order was blocked because there is not enough stock for the requested food item.",
+  "Food stock cannot be negative":
+    "A cafe inventory update was blocked because it would have set the food stock count below zero.",
+  "Membership is expired or cancelled":
+    "Someone tried to use an expired or cancelled membership to access a restricted feature.",
+  "Employee has an overlapping shift":
+    "A schedule entry was blocked because this employee already has a shift during that time.",
+  "Artist already exists in the database":
+    "A duplicate artist submission was blocked to prevent duplicate records.",
+  "Artwork already exists: same title, artist, and creation date":
+    "A duplicate artwork was blocked — an artwork with the same title, artist, and creation date already exists.",
+  "Cannot delete artwork that is currently on display in an exhibition":
+    "An artwork deletion was blocked because the artwork is currently on display in an active exhibition.",
+  "Cannot assign artwork to exhibition: it is currently on outgoing loan to another institution":
+    "An artwork could not be added to an exhibition because it is currently on loan to another institution.",
+  "Exhibition end date cannot be before start date":
+    "An exhibition entry was blocked because its end date was set earlier than its start date.",
+  "Event end date cannot be before start date":
+    "An event entry was blocked because its end date was set earlier than its start date.",
+  "Shift end time must be after start time":
+    "A schedule entry was blocked because the shift end time was set before the start time.",
+  "Tour end time must be after start time":
+    "A tour entry was blocked because its end time was set before its start time.",
+  "Loan end date cannot be before start date":
+    "An artwork loan was blocked because its end date was set earlier than its start date.",
+  "Date of death cannot be before date of birth":
+    "An artist record was blocked because the death date was set earlier than the birth date.",
+};
+
+function translateTriggerMessage(raw) {
+  return TRIGGER_MESSAGE_MAP[raw] || raw;
+}
+
+async function logTriggerViolation(pool, req, message, context = null) {
   try {
     await pool.query(
       `INSERT INTO trigger_violation_log (route_path, user_email, message) VALUES (?, ?, ?)`,
-      [req.path, req.session?.user?.email || null, message]
+      [context || req.path, req.session?.user?.email || null, message]
     );
   } catch (_) {}
 }
@@ -1064,6 +1107,7 @@ module.exports = {
   isCafe,
   isCurator,
   logTriggerViolation,
+  translateTriggerMessage,
   slugify,
   FALLBACK_ASSETS,
 };
