@@ -128,11 +128,6 @@ function registerAuthenticationRoutes(app, { pool }) {
           { href: "/member-login", label: "Member Access" },
           { href: "/staff-login", label: "Staff Login", secondary: true },
         ],
-        details: [
-          { label: "Visit", title: "Admission", description: "Tickets and member access." },
-          { label: "Collection", title: "Galleries", description: "Artworks and exhibitions." },
-          { label: "Operations", title: "Staff", description: "Museum workspaces." },
-        ],
       },
       content: `
         <section class="public-section public-section--plan" id="plan-visit">
