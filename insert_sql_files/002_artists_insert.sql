@@ -47,7 +47,7 @@ FROM (
     UNION ALL
     SELECT 'Female Head Type 7', 'Graphics', '1528-01-01', 'Mannerism (1520-1600)', NULL, 'Albrecht Dürer', '/images/female-type-7.jpg'
     UNION ALL
-    SELECT 'Deposition', 'Sculpture', '1740-01-01', 'Mannerism (1520-1600)', 'Mannerism', 'Johann Paul Egell', '/images/deposition-egell.jpg.jpg'
+    SELECT 'Deposition', 'Sculpture', '1740-01-01', 'Mannerism (1520-1600)', 'Mannerism', 'Johann Paul Egell', '/images/deposition-egell.jpg'
     UNION ALL
     SELECT 'Leonore Discovers Dagger', 'Painting', '1795-01-01', 'Romanticism (1800-1850)', 'Romanticism', 'John Henry Fuseli', '/images/leonore-discovers-dagger.jpg'
     UNION ALL
