@@ -113,83 +113,79 @@ if not exist sqlFiles\001_create_database.sql (
     exit /b 1
 )
  
-echo [0/19] Dropping old database for a clean rebuild...
+echo [0/18] Dropping old database for a clean rebuild...
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% -e "DROP DATABASE IF EXISTS %MYSQL_DB%;"
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [1/19] sqlFiles\001_create_database.sql
+echo [1/18] sqlFiles\001_create_database.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% < sqlFiles\001_create_database.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [2/19] sqlFiles\002_add_users_table.sql
+echo [2/18] sqlFiles\002_add_users_table.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\002_add_users_table.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [3/19] sqlFiles\003_extend_users_for_auth.sql
+echo [3/18] sqlFiles\003_extend_users_for_auth.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\003_extend_users_for_auth.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [4/19] sqlFiles\005_manager_notif.sql
+echo [4/18] sqlFiles\005_manager_notif.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\005_manager_notif.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [5/19] sqlFiles\006_trigger_violation_log.sql
+echo [5/18] sqlFiles\006_trigger_violation_log.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\006_trigger_violation_log.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [6/19] sqlFiles\007_new_tables.sql
+echo [6/18] sqlFiles\007_new_tables.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\007_new_tables.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [7/19] sqlFiles\008_triggers.sql
+echo [7/18] sqlFiles\008_triggers.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\008_triggers.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [8/19] sqlFiles\009_reports.sql
+echo [8/18] sqlFiles\009_reports.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\009_reports.sql
 if %ERRORLEVEL% NEQ 0 goto error
 
-echo [9/19] sqlFiles\010_membership_status.sql
+echo [9/18] sqlFiles\010_membership_status.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\010_membership_status.sql
 if %ERRORLEVEL% NEQ 0 goto error
 
-echo [10/19] sqlFiles\011_image_urls.sql
-%MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\011_image_urls.sql
-if %ERRORLEVEL% NEQ 0 goto error
-
-echo [11/19] insert_sql_files\001_employee_insert.sql
+echo [10/18] insert_sql_files\001_employee_insert.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < insert_sql_files\001_employee_insert.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [12/19] insert_sql_files\002_artists_insert.sql
+echo [11/18] insert_sql_files\002_artists_insert.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < insert_sql_files\002_artists_insert.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [13/19] insert_sql_files\003_exhibition_insert.sql
+echo [12/18] insert_sql_files\003_exhibition_insert.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < insert_sql_files\003_exhibition_insert.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [14/19] insert_sql_files\004_schedule.sql
+echo [13/18] insert_sql_files\004_schedule.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < insert_sql_files\004_schedule.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [15/19] insert_sql_files\005_members_insert.sql
+echo [14/18] insert_sql_files\005_members_insert.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < insert_sql_files\005_members_insert.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [16/19] insert_sql_files\006_artwork_loans.sql
+echo [15/18] insert_sql_files\006_artwork_loans.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < insert_sql_files\006_artwork_loans.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [17/19] insert_sql_files\007_sale_insert.sql
+echo [16/18] insert_sql_files\007_sale_insert.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < insert_sql_files\007_sale_insert.sql
 if %ERRORLEVEL% NEQ 0 goto error
  
-echo [18/19] insert_sql_files\008_registrations_inserts.sql
+echo [17/18] insert_sql_files\008_registrations_inserts.sql
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < insert_sql_files\008_registrations_inserts.sql
 if %ERRORLEVEL% NEQ 0 goto error
 
-echo [19/19] sqlFiles\004_seed_auth_users.sql (Login Credentials)
+echo [18/18] sqlFiles\004_seed_auth_users.sql (Login Credentials)
 %MYSQL% -h %MYSQL_HOST% -P %MYSQL_PORT% -u %MYSQL_USER% -p%MYSQL_PASS% %SSL_FLAG% %MYSQL_DB% < sqlFiles\004_seed_auth_users.sql
 if %ERRORLEVEL% NEQ 0 goto error
 
