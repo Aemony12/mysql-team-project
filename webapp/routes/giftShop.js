@@ -64,15 +64,14 @@ function registerGiftShopRoutes(app, { pool, upload }) {
         <td>${statusHtml}</td>
         <td>${item.Image_URL ? `<img src="${escapeHtml(item.Image_URL)}" alt="${escapeHtml(item.Name_of_Item)} preview" class="table-thumb">` : "—"}</td>
         <td class="actions">
-            <form method="get" action="/add-item" class="inline-form">
+          <form method="get" action="/add-item" class="inline-form">
             <input type="hidden" name="edit_id" value="${item.Gift_Shop_Item_ID}">
             <button class="link-button" type="submit">Edit</button>
           </form>
-          ${isSuper ? `
-          <form method="post" action="/delete-item" class="inline-form" onsubmit="return confirm('Remove this item?');">
+          <form method="post" action="/delete-item" class="inline-form" onsubmit="return confirm('Remove this item? This cannot be undone.');">
             <input type="hidden" name="item_id" value="${item.Gift_Shop_Item_ID}">
             <button class="link-button danger" type="submit">Delete</button>
-          </form>` : ""}
+          </form>
         </td>
       </tr>
     `;
@@ -194,7 +193,7 @@ function registerGiftShopRoutes(app, { pool, upload }) {
   res.redirect("/add-item");
 }));
 
-  app.post("/delete-item", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
+  app.post("/delete-item", requireLogin, allowRoles(["giftshop", "supervisor"]), asyncHandler(async (req, res) => {
     const idToDelete = req.body.item_id;
 
     if (!idToDelete) {
