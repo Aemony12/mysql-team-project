@@ -10,6 +10,7 @@ const {
   renderPager,
   renderPage,
   requireLogin,
+  requireActiveMembership,
   setFlash,
   allowRoles,
   logTriggerViolation
@@ -72,9 +73,11 @@ function renderEventBrowseCards(events, membershipActive, hasTicket, hasMembersh
           <article class="feature-card"
                    data-event-card
                    data-event-date="${escapeHtml(isoDate)}"
+                   data-event-title="${escapeHtml(String(ev.event_Name || "").toLowerCase())}"
                    data-event-program="${escapeHtml(programType)}"
                    data-event-eligibility="${escapeHtml(eligibility)}"
-                   data-event-status="${escapeHtml(statusKey)}">
+                   data-event-status="${escapeHtml(statusKey)}"
+                   data-event-spots="${spotsLeft}">
             <div class="feature-card__media"><img src="${asset.imagePath}" alt="${asset.alt}"></div>
             <div class="feature-card__body event-card__body">
               <div class="event-card__content">
@@ -287,7 +290,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
     res.redirect("/add-event-registration");
   }));
 
-  app.get("/event-register", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
+  app.get("/event-register", requireLogin, allowRoles(["user"]), requireActiveMembership(pool), asyncHandler(async (req, res) => {
     const [eventImageColumns] = await pool.query(
       `SELECT 1
        FROM information_schema.COLUMNS
@@ -421,6 +424,13 @@ function registerEventRegistrationRoutes(app, { pool }) {
                 <option value="full">Sold Out</option>
               </select>
             </label>
+            <label>Sort
+              <select id="event-filter-sort">
+                <option value="soonest">Soonest first</option>
+                <option value="name">Name A-Z</option>
+                <option value="availability">Most availability</option>
+              </select>
+            </label>
             <button type="button" class="link-button" id="event-filter-clear">Clear filters</button>
           </div>
           ${renderFlash(req)}
@@ -437,6 +447,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
               const programSel = document.getElementById("event-filter-program");
               const eligibilitySel = document.getElementById("event-filter-eligibility");
               const availabilitySel = document.getElementById("event-filter-availability");
+              const sortSel = document.getElementById("event-filter-sort");
               const clearBtn = document.getElementById("event-filter-clear");
               const emptyMsg = document.getElementById("event-filter-empty");
               const cards = Array.from(grid.querySelectorAll("[data-event-card]"));
@@ -446,6 +457,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
                 const wantProgram = programSel.value;
                 const wantEligibility = eligibilitySel.value;
                 const wantStatus = availabilitySel.value;
+                const sortMode = sortSel.value;
                 let visible = 0;
                 cards.forEach((card) => {
                   const date = card.getAttribute("data-event-date");
@@ -460,10 +472,20 @@ function registerEventRegistrationRoutes(app, { pool }) {
                   card.style.display = show ? "" : "none";
                   if (show) visible++;
                 });
+                const sortedCards = cards.slice().sort((a, b) => {
+                  if (sortMode === "name") {
+                    return a.dataset.eventTitle.localeCompare(b.dataset.eventTitle);
+                  }
+                  if (sortMode === "availability") {
+                    return Number(b.dataset.eventSpots || 0) - Number(a.dataset.eventSpots || 0);
+                  }
+                  return a.dataset.eventDate.localeCompare(b.dataset.eventDate);
+                });
+                sortedCards.forEach((card) => grid.append(card));
                 if (emptyMsg) emptyMsg.hidden = visible !== 0;
               }
 
-              [dateInput, programSel, eligibilitySel, availabilitySel].forEach((el) => {
+              [dateInput, programSel, eligibilitySel, availabilitySel, sortSel].forEach((el) => {
                 el.addEventListener("input", applyFilters);
                 el.addEventListener("change", applyFilters);
               });
@@ -472,6 +494,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
                 programSel.value = "";
                 eligibilitySel.value = "";
                 availabilitySel.value = "";
+                sortSel.value = "soonest";
                 applyFilters();
               });
             })();
@@ -498,7 +521,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
     }));
   }));
 
-  app.post("/event-register", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
+  app.post("/event-register", requireLogin, allowRoles(["user"]), requireActiveMembership(pool), asyncHandler(async (req, res) => {
     const { event_id: eventId } = req.body;
     const membershipId = req.session.user.membershipId;
 
@@ -568,7 +591,7 @@ function registerEventRegistrationRoutes(app, { pool }) {
     res.redirect("/event-register");
   }));
 
-  app.post("/event-cancel", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
+  app.post("/event-cancel", requireLogin, allowRoles(["user"]), requireActiveMembership(pool), asyncHandler(async (req, res) => {
     const { registration_id: regId } = req.body;
     const membershipId = req.session.user.membershipId;
 

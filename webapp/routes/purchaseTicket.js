@@ -843,8 +843,14 @@ function registerPurchaseTicketRoutes(app, { pool }) {
       user: req.session.user,
       currentPath: req.path,
       content: `
-        <section class="card dashboard-card">
-          <h1>Ticket Sales</h1>
+        <section class="card dashboard-card ticket-sales-panel">
+          <div class="ticket-sales-header">
+            <div>
+              <p class="eyebrow">Admissions Report</p>
+              <h1>Ticket Sales</h1>
+            </div>
+            <p class="dashboard-note">Today&apos;s ticket-line activity by order, ticket type, and purchase channel.</p>
+          </div>
           <form method="get" action="/ticket-sales" class="ticket-sales-filters">
             <label>Ticket Type
               <select name="ticket_type">
@@ -879,7 +885,7 @@ function registerPurchaseTicketRoutes(app, { pool }) {
             `).join("") || '<div class="empty-state"><p>No ticket lines match the current filters.</p></div>'}
           </div>
         </section>
-        <section class="card dashboard-card">
+        <section class="card dashboard-card ticket-sales-panel">
           <div class="section-header">
             <div>
               <h2>Ticket Lines</h2>

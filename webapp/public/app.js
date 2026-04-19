@@ -32,9 +32,13 @@
       const params = new URLSearchParams(window.location.search);
       const requestedTab = params.get("view");
       const defaultTab = buttons[0].getAttribute("data-tab-target");
-      const initialTab = buttons.some((button) => button.getAttribute("data-tab-target") === requestedTab)
+      const storedTab = window.localStorage.getItem(storageKey);
+      const hasTab = (tabId) => buttons.some((button) => button.getAttribute("data-tab-target") === tabId);
+      const initialTab = hasTab(requestedTab)
         ? requestedTab
-        : window.localStorage.getItem(storageKey) || defaultTab;
+        : hasTab(storedTab)
+        ? storedTab
+        : defaultTab;
 
       const setActiveTab = (tabId, updateUrl = true, animate = true) => {
         buttons.forEach((button) => {
@@ -195,6 +199,78 @@
     syncState();
   };
 
+  const initMuseumMotion = (root = document) => {
+    const staggerSelectors = [
+      ".feature-grid",
+      ".collection-grid",
+      ".product-grid",
+      ".public-choice-grid",
+      ".summary-grid",
+      ".record-card-grid",
+      ".supervisor-card-grid",
+      ".ticket-card-grid",
+      ".program-grid",
+    ].join(", ");
+
+    root.querySelectorAll(staggerSelectors).forEach((grid) => {
+      grid.classList.add("motion-stagger-grid");
+      Array.from(grid.children).forEach((child, index) => {
+        child.style.setProperty("--stagger-index", String(Math.min(index, 12)));
+      });
+    });
+
+    root.querySelectorAll(".media-hero").forEach((hero) => {
+      hero.classList.add("motion-depth");
+    });
+  };
+
+  const initStickyHeaderMotion = () => {
+    const header = document.querySelector(".site-header");
+    if (!header) {
+      return;
+    }
+
+    const syncHeader = () => {
+      header.classList.toggle("is-scrolled", window.scrollY > 24);
+    };
+
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive: true });
+  };
+
+  const initHeroDepthMotion = () => {
+    if (reduceMotion.matches) {
+      return;
+    }
+
+    let ticking = false;
+    const syncHeroDepth = () => {
+      ticking = false;
+      document.querySelectorAll(".media-hero.motion-depth").forEach((hero) => {
+        const rect = hero.getBoundingClientRect();
+        if (rect.bottom < 0 || rect.top > window.innerHeight) {
+          return;
+        }
+
+        const offset = Math.max(-18, Math.min(18, rect.top * -0.035));
+        hero.style.setProperty("--hero-parallax-y", `${offset}px`);
+      });
+    };
+
+    const requestSync = () => {
+      if (ticking) {
+        return;
+      }
+
+      ticking = true;
+      window.requestAnimationFrame(syncHeroDepth);
+    };
+
+    syncHeroDepth();
+    window.addEventListener("scroll", requestSync, { passive: true });
+    window.addEventListener("resize", requestSync);
+  };
+
   const initSupervisorNavigation = () => {
     let isLoading = false;
 
@@ -222,6 +298,7 @@
       initGiftOrders();
       initTourRoster();
       initRestorationModal();
+      initMuseumMotion(root);
     };
 
     const loadSupervisorPage = async (url, pushState = true) => {
@@ -268,6 +345,12 @@
         currentMain.replaceWith(nextMain);
         enhanceNewContent(nextMain);
         updateActiveSupervisorLink(url.toString());
+
+        if (url.pathname === "/dashboard") {
+          window.sessionStorage.removeItem(overviewResetKey);
+          resetOverviewPageState();
+          return;
+        }
 
         const nextHeading = nextMain.querySelector(".supervisor-main h1, .supervisor-main h2, .supervisor-main [tabindex]");
         if (nextHeading) {
@@ -378,6 +461,194 @@
     });
     window.addEventListener("scroll", sync, { passive: true });
     sync();
+  };
+
+  const interactionContextKey = "museum:interaction-context";
+  const overviewResetKey = "museum:overview-reset";
+
+  const getSectionContext = (source, targetUrl = window.location.href) => {
+    const section = source?.closest?.("section");
+    if (!section) {
+      return null;
+    }
+
+    const heading = section.querySelector("h1, h2")?.textContent.trim() || "";
+    return {
+      path: new URL(targetUrl, window.location.href).pathname,
+      sectionId: section.id || "",
+      tabPanel: section.getAttribute("data-tab-panel") || "",
+      heading,
+    };
+  };
+
+  const storeInteractionContext = (context) => {
+    if (!context) {
+      return;
+    }
+
+    window.sessionStorage.setItem(interactionContextKey, JSON.stringify(context));
+  };
+
+  const findMatchingSection = (root, context) => {
+    if (!context) {
+      return null;
+    }
+
+    if (context.sectionId) {
+      const anchor = root.getElementById?.(context.sectionId) || root.querySelector?.(`#${context.sectionId}`);
+      const section = anchor?.closest?.("section") || (anchor?.matches?.("section") ? anchor : null);
+      if (section) {
+        return section;
+      }
+    }
+
+    if (context.tabPanel) {
+      const panel = Array.from(root.querySelectorAll?.("section[data-tab-panel]") || [])
+        .find((section) => section.getAttribute("data-tab-panel") === context.tabPanel);
+      if (panel) {
+        return panel;
+      }
+    }
+
+    if (context.heading) {
+      return Array.from(root.querySelectorAll?.("section") || [])
+        .find((section) => section.querySelector("h1, h2")?.textContent.trim() === context.heading) || null;
+    }
+
+    return null;
+  };
+
+  const focusAndScrollSection = (section) => {
+    if (!section) {
+      return;
+    }
+
+    const heading = section.querySelector("h1, h2, [tabindex]");
+    if (heading) {
+      if (!heading.hasAttribute("tabindex")) {
+        heading.setAttribute("tabindex", "-1");
+      }
+      heading.focus({ preventScroll: true });
+    }
+
+    section.scrollIntoView({ block: "start", behavior: reduceMotion.matches ? "auto" : "smooth" });
+    section.classList.add("is-scroll-target");
+    window.setTimeout(() => section.classList.remove("is-scroll-target"), 1800);
+  };
+
+  const revealInsertedContent = (root) => {
+    if (reduceMotion.matches) {
+      return;
+    }
+
+    const animated = root.matches?.(".media-hero, .feature-card, .dashboard-card, .dashboard-section, .notification-item, .auth-card, .card, .portal-banner, .product-card, .collection-card, .record-card")
+      ? [root]
+      : [];
+    animated.push(...root.querySelectorAll?.(".media-hero, .feature-card, .dashboard-card, .dashboard-section, .notification-item, .auth-card, .card, .portal-banner, .product-card, .collection-card, .record-card") || []);
+
+    animated.forEach((element, index) => {
+      element.classList.add("reveal");
+      element.style.setProperty("--delay", `${Math.min(index * 35, 220)}ms`);
+      requestAnimationFrame(() => element.classList.add("is-visible"));
+    });
+  };
+
+  const restoreRevealState = () => {
+    document.querySelectorAll(".reveal").forEach((element) => {
+      element.classList.add("is-visible");
+      element.style.removeProperty("--delay");
+    });
+  };
+
+  const isOverviewPage = () => (
+    window.location.pathname === "/dashboard"
+    && Boolean(document.querySelector(".dashboard-card h2"))
+  );
+
+  const requestOverviewReset = () => {
+    window.sessionStorage.setItem(overviewResetKey, "true");
+  };
+
+  const resetOverviewPageState = () => {
+    if (!isOverviewPage()) {
+      return;
+    }
+
+    restoreRevealState();
+
+    const scrollTop = () => window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    scrollTop();
+    window.requestAnimationFrame(scrollTop);
+    window.setTimeout(scrollTop, 80);
+    window.setTimeout(scrollTop, 220);
+  };
+
+  const consumeOverviewReset = () => {
+    if (!isOverviewPage()) {
+      return;
+    }
+
+    if (window.sessionStorage.getItem(overviewResetKey) !== "true") {
+      return;
+    }
+
+    window.sessionStorage.removeItem(overviewResetKey);
+    resetOverviewPageState();
+  };
+
+  const initInteractionContext = () => {
+    document.addEventListener("submit", (event) => {
+      const form = event.target.closest("form");
+      if (!form) {
+        return;
+      }
+
+      storeInteractionContext(getSectionContext(form, form.action || window.location.href));
+    });
+
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest("a[href]");
+      if (!link) {
+        return;
+      }
+
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin) {
+        return;
+      }
+
+      if (url.pathname === "/dashboard") {
+        requestOverviewReset();
+      }
+
+      storeInteractionContext(getSectionContext(link, url.toString()));
+    });
+
+    window.setTimeout(() => {
+      const raw = window.sessionStorage.getItem(interactionContextKey);
+      if (!raw) {
+        return;
+      }
+
+      window.sessionStorage.removeItem(interactionContextKey);
+      let context = null;
+      try {
+        context = JSON.parse(raw);
+      } catch (_) {
+        return;
+      }
+
+      if (!context || context.path !== window.location.pathname || window.location.hash) {
+        return;
+      }
+
+      if (window.location.pathname === "/dashboard") {
+        resetOverviewPageState();
+        return;
+      }
+
+      focusAndScrollSection(findMatchingSection(document, context));
+    }, 80);
   };
 
   const initDateRangeValidation = () => {
@@ -742,8 +1013,14 @@
           return;
         }
 
+        if (nextSection.matches(".tab-panel")) {
+          nextSection.hidden = false;
+          nextSection.classList.add("is-visible");
+        }
         currentSection.replaceWith(nextSection);
         initRecordCards(nextSection);
+        initMuseumMotion(nextSection);
+        revealInsertedContent(nextSection);
         window.history.pushState({}, "", url.toString());
 
         const heading = nextSection.querySelector("h1, h2, [tabindex]");
@@ -757,6 +1034,99 @@
         nextSection.scrollIntoView({ block: "start", behavior: reduceMotion.matches ? "auto" : "smooth" });
       } catch (_) {
         window.location.href = link.href;
+      } finally {
+        currentSection.removeAttribute("aria-busy");
+        currentSection.classList.remove("is-loading-section");
+      }
+    });
+  };
+
+  const initAjaxGetForms = () => {
+    document.addEventListener("submit", async (event) => {
+      const form = event.target.closest("form");
+      if (!form || event.defaultPrevented) {
+        return;
+      }
+
+      const method = (form.getAttribute("method") || "get").toLowerCase();
+      if (method !== "get") {
+        return;
+      }
+
+      if (form.closest(".tab-panel[hidden]")) {
+        return;
+      }
+
+      if (!form.classList.contains("form-grid") && form.dataset.ajaxSection !== "true") {
+        return;
+      }
+
+      const url = new URL(form.action || window.location.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname !== window.location.pathname) {
+        return;
+      }
+
+      const formData = new FormData(form);
+      const tabPanel = form.closest(".tab-panel[data-tab-group]");
+      if (tabPanel && !formData.has("view")) {
+        const group = tabPanel.getAttribute("data-tab-group");
+        const activeButton = document.querySelector(`.tab-bar[data-tab-group="${group}"] .tab-button.is-active`);
+        const activeView = activeButton?.getAttribute("data-tab-target") || tabPanel.getAttribute("data-tab-panel");
+        if (activeView) {
+          formData.set("view", activeView);
+        }
+      }
+
+      url.search = "";
+      formData.forEach((value, key) => {
+        if (value !== "") {
+          url.searchParams.set(key, value);
+        }
+      });
+
+      const currentSection = form.closest("section");
+      const context = getSectionContext(form, url.toString());
+      if (!currentSection || !context) {
+        return;
+      }
+
+      event.preventDefault();
+      currentSection.setAttribute("aria-busy", "true");
+      currentSection.classList.add("is-loading-section");
+
+      try {
+        const response = await fetch(url.toString(), {
+          credentials: "same-origin",
+          headers: { "X-Requested-With": "fetch" },
+        });
+
+        if (!response.ok) {
+          window.location.href = url.toString();
+          return;
+        }
+
+        const html = await response.text();
+        const nextDocument = new DOMParser().parseFromString(html, "text/html");
+        const nextSection = findMatchingSection(nextDocument, context);
+
+        if (!nextSection) {
+          window.location.href = url.toString();
+          return;
+        }
+
+        document.title = nextDocument.title || document.title;
+        if (nextSection.matches(".tab-panel")) {
+          nextSection.hidden = false;
+          nextSection.classList.add("is-visible");
+        }
+        currentSection.replaceWith(nextSection);
+        initRecordCards(nextSection);
+        initMuseumMotion(nextSection);
+        revealInsertedContent(nextSection);
+        window.history.pushState({}, "", url.toString());
+        focusAndScrollSection(nextSection);
+      } catch (_) {
+        window.location.href = url.toString();
       } finally {
         currentSection.removeAttribute("aria-busy");
         currentSection.classList.remove("is-loading-section");
@@ -1057,10 +1427,14 @@
   initTabs();
   initCarousel();
   initHeroVideoToggle();
+  initMuseumMotion();
+  initStickyHeaderMotion();
+  initHeroDepthMotion();
   initSupervisorNavigation();
   initOverviewNavigation();
   initScrollToButtons();
   initFlashDismiss();
+  initInteractionContext();
   initDateRangeValidation();
   initTicketPricing();
   initPosFilters();
@@ -1070,8 +1444,27 @@
   initRestorationModal();
   initTypewriter();
   initBackToTop();
+  initAjaxGetForms();
   initAjaxPagination();
   initRecordCards();
+  consumeOverviewReset();
+
+  window.addEventListener("pagehide", () => {
+    if (isOverviewPage()) {
+      requestOverviewReset();
+    }
+  });
+
+  window.addEventListener("pageshow", () => {
+    if (isOverviewPage()) {
+      restoreRevealState();
+      consumeOverviewReset();
+    }
+  });
+
+  window.addEventListener("popstate", () => {
+    window.setTimeout(consumeOverviewReset, 0);
+  });
 
   if (reduceMotion.matches) {
     document.documentElement.classList.add("reduce-motion");

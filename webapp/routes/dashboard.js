@@ -468,7 +468,11 @@ function registerDashboardRoutes(app, { pool }) {
                 <div>
                   <p class="eyebrow">${hasTicket ? "Next" : "Visit"}</p>
                   <h2>${hasTicket ? "Explore the collection before your visit." : "Buy admission with your member pricing."}</h2>
-                  <p>${hasTicket ? "Search artwork records, tours, and member events from one place." : "Choose ticket type first, then add your visit date and exhibition."}</p>
+                  <p>${hasTicket
+                    ? hasMembership
+                      ? "Search artwork records, tours, and member events from one place."
+                      : "Search artwork records and purchase membership when you are ready for programs."
+                    : "Choose ticket type first, then add your visit date and exhibition."}</p>
                   <a class="button" href="${hasTicket ? "/queries?view=artwork-status#query-tabs" : "/purchase-ticket"}">${hasTicket ? "Explore Art" : "Buy Tickets"}</a>
                 </div>
               </article>
@@ -495,8 +499,10 @@ function registerDashboardRoutes(app, { pool }) {
                 <div><dt>Valid Through</dt><dd>${membershipInfo?.Date_Exited ? escapeHtml(new Date(membershipInfo.Date_Exited).toLocaleDateString()) : "N/A"}</dd></div>
               </dl>
               <div class="workspace-links">
-                <a class="button button-secondary" href="/event-register">Events</a>
-                <a class="button button-secondary" href="/tour-register">Tours</a>
+                ${hasMembership
+                  ? `<a class="button button-secondary" href="/event-register">Events</a>
+                     <a class="button button-secondary" href="/tour-register">Tours</a>`
+                  : '<a class="button button-secondary" href="/purchase-membership">Purchase Membership</a>'}
               </div>
             </aside>
           </section>

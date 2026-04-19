@@ -1,0 +1,419 @@
+/* Museum motion layer: quiet, progressive enhancements on top of existing animations. */
+:root {
+  --motion-fast: 180ms;
+  --motion-base: 280ms;
+  --motion-slow: 620ms;
+  --motion-curve: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-field: rgba(255, 253, 249, 0.48);
+}
+
+html.reduce-motion {
+  scroll-behavior: auto;
+}
+
+.site-header {
+  transition:
+    background-color var(--motion-base) ease,
+    border-color var(--motion-base) ease,
+    box-shadow var(--motion-base) ease,
+    transform var(--motion-base) var(--motion-curve);
+}
+
+.site-header__inner,
+.brand-mark,
+.brand-title,
+.brand-eyebrow {
+  transition:
+    padding var(--motion-base) var(--motion-curve),
+    min-width var(--motion-base) var(--motion-curve),
+    font-size var(--motion-base) var(--motion-curve),
+    opacity var(--motion-base) ease;
+}
+
+.site-header.is-scrolled {
+  background: rgba(252, 251, 248, 0.985);
+  border-color: rgba(57, 49, 41, 0.16);
+  box-shadow: 0 12px 30px rgba(24, 23, 20, 0.07);
+}
+
+.site-header.is-scrolled .site-header__inner {
+  padding-block: 0.68rem;
+}
+
+.site-header.is-scrolled .brand-mark {
+  min-width: 3.75rem;
+  padding-block: 0.68rem;
+}
+
+.site-header.is-scrolled .brand-title {
+  font-size: 1.06rem;
+}
+
+.site-header.is-scrolled .brand-eyebrow {
+  opacity: 0.72;
+}
+
+.site-nav a,
+.feature-card__link,
+.dashboard-back-link,
+.supervisor-sidebar__nav a,
+.record-card__actions .link-button,
+.pagination__actions a,
+.utility-bar__links a {
+  position: relative;
+}
+
+.site-nav a::after,
+.feature-card__link::after,
+.dashboard-back-link::after,
+.supervisor-sidebar__nav a::after,
+.record-card__actions .link-button::after,
+.pagination__actions a::after,
+.utility-bar__links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.08rem;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--motion-base) var(--motion-curve);
+}
+
+.site-nav a:hover::after,
+.site-nav a:focus-visible::after,
+.feature-card__link:hover::after,
+.feature-card__link:focus-visible::after,
+.dashboard-back-link:hover::after,
+.dashboard-back-link:focus-visible::after,
+.supervisor-sidebar__nav a:hover::after,
+.supervisor-sidebar__nav a:focus-visible::after,
+.record-card__actions .link-button:hover::after,
+.record-card__actions .link-button:focus-visible::after,
+.pagination__actions a:hover::after,
+.pagination__actions a:focus-visible::after,
+.utility-bar__links a:hover::after,
+.utility-bar__links a:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.button:active,
+button:active,
+.tab-button:active,
+.link-button:active,
+.supervisor-text-action:active {
+  transform: translateY(0);
+}
+
+.feature-card,
+.product-card,
+.collection-card,
+.public-choice-card,
+.member-support-card,
+.member-primary-action,
+.ticket-option-card,
+.ticket-summary-card,
+.summary-card,
+.dashboard-card,
+.report-chart-card,
+.supervisor-business-card {
+  transition:
+    border-color var(--motion-base) ease,
+    box-shadow var(--motion-base) ease,
+    transform var(--motion-base) var(--motion-curve),
+    background-color var(--motion-base) ease;
+}
+
+.feature-card:hover,
+.feature-card:focus-within,
+.product-card:hover,
+.product-card:focus-within,
+.collection-card:hover,
+.collection-card:focus-within,
+.public-choice-card:hover,
+.public-choice-card:focus-within,
+.member-support-card:hover,
+.member-support-card:focus-within,
+.member-primary-action:hover,
+.member-primary-action:focus-within,
+.ticket-option-card:hover,
+.ticket-option-card:focus-within,
+.ticket-summary-card:hover,
+.ticket-summary-card:focus-within,
+.summary-card:hover,
+.summary-card:focus-within,
+.dashboard-card:hover,
+.dashboard-card:focus-within,
+.report-chart-card:hover,
+.report-chart-card:focus-within,
+.supervisor-business-card:hover,
+.supervisor-business-card:focus-within {
+  border-color: rgba(82, 102, 118, 0.24);
+  box-shadow: 0 18px 38px rgba(24, 23, 20, 0.08);
+  transform: translateY(-3px);
+}
+
+.feature-card__media,
+.collection-card__media,
+.product-card__media,
+.public-choice-card__media,
+.carousel__media,
+.portal-banner__media,
+.member-primary-action,
+.member-support-card,
+.highlight-band__primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card__media::after,
+.collection-card__media::after,
+.product-card__media::after,
+.public-choice-card__media::after,
+.carousel__media::after,
+.portal-banner__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 253, 249, 0.72), rgba(255, 253, 249, 0));
+  transform: translateX(-102%);
+  transition: transform 760ms var(--motion-curve);
+}
+
+.reveal.is-visible .feature-card__media::after,
+.reveal.is-visible .collection-card__media::after,
+.reveal.is-visible .product-card__media::after,
+.reveal.is-visible .public-choice-card__media::after,
+.reveal.is-visible .carousel__media::after,
+.reveal.is-visible .portal-banner__media::after,
+.feature-card:hover .feature-card__media::after,
+.collection-card:hover .collection-card__media::after,
+.product-card:hover .product-card__media::after,
+.public-choice-card:hover .public-choice-card__media::after {
+  transform: translateX(102%);
+}
+
+.media-hero__media img,
+.video-hero video,
+.feature-card__media img,
+.collection-card__media img,
+.product-card__media img,
+.public-choice-card__media img,
+.carousel__media img,
+.portal-banner__media img,
+.highlight-band__primary img,
+.member-primary-action img,
+.member-support-card img {
+  transition:
+    transform var(--motion-slow) var(--motion-curve),
+    filter var(--motion-slow) ease;
+}
+
+.media-hero.motion-depth .media-hero__media img,
+.media-hero.motion-depth .video-hero video {
+  transform: translate3d(0, var(--hero-parallax-y, 0), 0) scale(1.035);
+}
+
+.feature-card:hover .feature-card__media img,
+.feature-card:focus-within .feature-card__media img,
+.collection-card:hover .collection-card__media img,
+.collection-card:focus-within .collection-card__media img,
+.product-card:hover .product-card__media img,
+.product-card:focus-within .product-card__media img,
+.public-choice-card:hover .public-choice-card__media img,
+.public-choice-card:focus-within .public-choice-card__media img,
+.member-support-card:hover img,
+.member-support-card:focus-within img,
+.member-primary-action:hover img,
+.member-primary-action:focus-within img {
+  transform: scale(1.035);
+}
+
+.media-hero__content > *,
+.portal-banner__content > *,
+.auth-shell > *,
+.section-header > * {
+  animation: museum-fade-up 700ms var(--motion-curve) both;
+}
+
+.media-hero__content > *:nth-child(2),
+.portal-banner__content > *:nth-child(2),
+.auth-shell > *:nth-child(2),
+.section-header > *:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.media-hero__content > *:nth-child(3),
+.portal-banner__content > *:nth-child(3),
+.auth-shell > *:nth-child(3),
+.section-header > *:nth-child(3) {
+  animation-delay: 150ms;
+}
+
+.motion-stagger-grid > * {
+  animation: museum-fade-up 620ms var(--motion-curve) both;
+  animation-delay: calc(var(--stagger-index, 0) * 55ms);
+}
+
+.tab-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-button::after {
+  content: "";
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: 0.5rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--motion-base) var(--motion-curve);
+}
+
+.tab-button.is-active::after,
+.tab-button[aria-selected="true"]::after,
+.tab-button:hover::after,
+.tab-button:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.is-loading-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  transform: translateX(-100%);
+  animation: museum-shimmer 1.1s ease-in-out infinite;
+}
+
+.membership-blocked-modal,
+.restoration-modal {
+  animation: museum-fade-in 220ms ease both;
+}
+
+.membership-blocked-modal__card,
+.restoration-modal__card {
+  animation: museum-dialog-in 280ms var(--motion-curve) both;
+  transform-origin: center;
+}
+
+.back-to-top.is-visible {
+  animation: museum-scale-in 260ms var(--motion-curve) both;
+}
+
+.flash,
+.alert-panel {
+  animation: museum-fade-up 360ms var(--motion-curve) both;
+}
+
+tbody tr,
+.record-card-grid > .record-card,
+.summary-grid > .summary-card {
+  transition:
+    background-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease,
+    transform var(--motion-fast) var(--motion-curve);
+}
+
+tbody tr:hover {
+  background: rgba(82, 102, 118, 0.055);
+}
+
+.supervisor-sidebar,
+.supervisor-main {
+  transition:
+    background-color var(--motion-base) ease,
+    border-color var(--motion-base) ease,
+    box-shadow var(--motion-base) ease;
+}
+
+@keyframes museum-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes museum-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes museum-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes museum-scale-in {
+  from {
+    transform: translateY(0.4rem) scale(0.94);
+  }
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes museum-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .media-hero.motion-depth .media-hero__media img,
+  .media-hero.motion-depth .video-hero video,
+  .feature-card:hover .feature-card__media img,
+  .collection-card:hover .collection-card__media img,
+  .product-card:hover .product-card__media img,
+  .public-choice-card:hover .public-choice-card__media img,
+  .member-support-card:hover img,
+  .member-primary-action:hover img {
+    transform: none !important;
+  }
+
+  .feature-card:hover,
+  .product-card:hover,
+  .collection-card:hover,
+  .public-choice-card:hover,
+  .member-support-card:hover,
+  .member-primary-action:hover,
+  .ticket-option-card:hover,
+  .summary-card:hover,
+  .dashboard-card:hover,
+  .report-chart-card:hover,
+  .supervisor-business-card:hover {
+    transform: none !important;
+  }
+}

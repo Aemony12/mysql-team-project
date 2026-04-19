@@ -134,8 +134,7 @@ function registerAuthenticationRoutes(app, { pool }) {
           <div class="section-header">
             <div>
               <p class="eyebrow">Plan Your Visit</p>
-              <h2>Choose a next step.</h2>
-            </div>
+              <h2>Choose your next step.</h2>
           </div>
           <div class="public-choice-grid">
             <article class="public-choice-card">

@@ -6,6 +6,7 @@ const {
   renderFlash,
   renderPage,
   requireLogin,
+  requireActiveMembership,
   setFlash,
   allowRoles,
   logTriggerViolation
@@ -416,7 +417,7 @@ function registerToursRoutes(app, { pool, upload }) {
     res.redirect(`/tours/roster?tour_id=${tourId}`);
   }));
 
-  app.get("/tour-register", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
+  app.get("/tour-register", requireLogin, allowRoles(["user"]), requireActiveMembership(pool), asyncHandler(async (req, res) => {
     const membershipId = req.session.user.membershipId;
     let memberInfo = null;
     if (membershipId) {
@@ -614,7 +615,7 @@ function registerToursRoutes(app, { pool, upload }) {
     }));
   }));
 
-  app.post("/tour-register", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
+  app.post("/tour-register", requireLogin, allowRoles(["user"]), requireActiveMembership(pool), asyncHandler(async (req, res) => {
     const { tour_id: tourId } = req.body;
     const membershipId = req.session.user.membershipId;
 
@@ -644,7 +645,7 @@ function registerToursRoutes(app, { pool, upload }) {
     res.redirect("/tour-register");
   }));
 
-  app.post("/tour-cancel", requireLogin, allowRoles(["user"]), asyncHandler(async (req, res) => {
+  app.post("/tour-cancel", requireLogin, allowRoles(["user"]), requireActiveMembership(pool), asyncHandler(async (req, res) => {
     const { registration_id: regId } = req.body;
     const membershipId = req.session.user.membershipId;
 

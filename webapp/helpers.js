@@ -382,8 +382,10 @@ function buildNavTabs(user) {
       return [
         { href: "/dashboard", label: "Overview" },
         { href: "/purchase-ticket", label: "Visit" },
-        { href: "/tour-register", label: "Tours" },
-        { href: "/event-register", label: "Events" },
+        ...(user.membershipId ? [
+          { href: "/tour-register", label: "Tours" },
+          { href: "/event-register", label: "Events" },
+        ] : []),
         { href: "/queries", label: "Art" },
       ];
     case "admissions":
@@ -1019,6 +1021,29 @@ function allowRoles(roles) {
   };
 }
 
+function requireActiveMembership(pool) {
+  return asyncHandler(async (req, res, next) => {
+    const membershipId = req.session.user?.membershipId;
+
+    if (!membershipId) {
+      setFlash(req, "A membership is required before accessing tours or events.");
+      return res.redirect("/purchase-membership");
+    }
+
+    const [[membership]] = await pool.query(
+      "SELECT Status FROM Membership WHERE Membership_ID = ?",
+      [membershipId],
+    );
+
+    if (membership?.Status !== "Active") {
+      setFlash(req, "An active membership is required before accessing tours or events.");
+      return res.redirect("/purchase-membership");
+    }
+
+    next();
+  });
+}
+
 const TRIGGER_MESSAGE_MAP = {
   "Event is fully booked":
     "A customer tried to register for an event that is already at full capacity.",
@@ -1102,6 +1127,7 @@ module.exports = {
   renderCarousel,
   renderSupervisorSidebar,
   requireLogin,
+  requireActiveMembership,
   setFlash,
   allowRoles,
   isAdmissions,
