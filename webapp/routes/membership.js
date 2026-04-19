@@ -15,7 +15,6 @@ const {
 
 function registerMembershipRoutes(app, { pool }) {
 
-  // ─── List + Add/Edit ─────────────────────────────────────────────────────────
   app.get("/add-membership", requireLogin, allowRoles(["admissions", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const membershipPage = getPageNumber(req.query.membership_page);
     const [members] = await pool.query(
@@ -166,7 +165,6 @@ function registerMembershipRoutes(app, { pool }) {
   }));
 
 
-  // ─── Add or Edit (POST) ───────────────────────────────────────────────────────
   app.post("/add-membership", requireLogin, allowRoles(["admissions", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const id = req.body.membership_id || null;
     const { first_name: firstName, last_name: lastName, email, phone, date_joined: dateJoined } = req.body;
@@ -202,10 +200,6 @@ function registerMembershipRoutes(app, { pool }) {
     res.redirect("/add-membership");
   }));
 
-
-  // ─── Renew membership ─────────────────────────────────────────────────────────
-  // Extends Date_Exited by 1 year from whichever is later: current expiry or today.
-  // This handles both Active (early renewal) and Expired (lapsed) members.
   app.post("/renew-membership", requireLogin, allowRoles(["admissions", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const id = req.body.membership_id;
     if (!id) {
@@ -243,8 +237,6 @@ function registerMembershipRoutes(app, { pool }) {
   }));
 
 
-  // ─── Soft cancel ─────────────────────────────────────────────────────────────
-  // Sets Status = 'Cancelled' and Date_Exited = today. Keeps the record and history.
   app.post("/cancel-membership", requireLogin, allowRoles(["admissions", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const id = req.body.membership_id;
     if (!id) {
@@ -263,9 +255,6 @@ function registerMembershipRoutes(app, { pool }) {
     res.redirect("/add-membership");
   }));
 
-
-  // ─── Restore cancelled membership ────────────────────────────────────────────
-  // Reactivates a Cancelled membership with a fresh 1-year period from today.
   app.post("/restore-membership", requireLogin, allowRoles(["admissions", "supervisor", "employee"]), asyncHandler(async (req, res) => {
     const id = req.body.membership_id;
     if (!id) {
@@ -307,9 +296,6 @@ function registerMembershipRoutes(app, { pool }) {
     res.redirect("/add-membership");
   }));
 
-
-  // ─── Hard delete (supervisor only) ───────────────────────────────────────────
-  // Cascades: nulls out Ticket.Membership_ID, removes registrations.
   app.post("/delete-membership", requireLogin, allowRoles(["supervisor"]), asyncHandler(async (req, res) => {
     const idToDelete = req.body.membership_id;
 
