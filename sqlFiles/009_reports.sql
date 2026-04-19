@@ -1,5 +1,3 @@
-
-
 USE museumdb;
 
 DELIMITER $$

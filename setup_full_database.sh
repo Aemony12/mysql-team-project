@@ -83,30 +83,31 @@ prompt_password MYSQL_PASS "Enter MySQL password"
 MYSQL_DB="${MYSQL_DB:-museumdb}"
 
 echo
-echo "[0/17] Dropping old database for a clean rebuild..."
+echo "[0/21] Dropping old database for a clean rebuild..."
 MYSQL_PWD="$MYSQL_PASS" mysql \
   -h "$MYSQL_HOST" \
   -P "$MYSQL_PORT" \
   -u "$MYSQL_USER" \
   -e "DROP DATABASE IF EXISTS $MYSQL_DB;"
 
-run_sql_file "[1/17]" "sqlFiles/001_create_database.sql" 0
-run_sql_file "[2/17]" "sqlFiles/002_add_users_table.sql"
-run_sql_file "[3/17]" "sqlFiles/003_extend_users_for_auth.sql"
-run_sql_file "[4/17]" "sqlFiles/005_manager_notif.sql"
-run_sql_file "[5/17]" "sqlFiles/006_trigger_violation_log.sql"
-run_sql_file "[6/17]" "sqlFiles/007_new_tables.sql"
-run_sql_file "[7/17]" "sqlFiles/008_triggers.sql"
-run_sql_file "[8/17]" "sqlFiles/009_reports.sql"
-run_sql_file "[9/17]" "insert_sql_files/001_employee_insert.sql"
-run_sql_file "[10/17]" "insert_sql_files/002_artists_insert.sql"
-run_sql_file "[11/17]" "insert_sql_files/003_exhibition_insert.sql"
-run_sql_file "[12/17]" "insert_sql_files/004_schedule.sql"
-run_sql_file "[13/17]" "insert_sql_files/005_members_insert.sql"
-run_sql_file "[14/17]" "insert_sql_files/006_artwork_loans.sql"
-run_sql_file "[15/17]" "insert_sql_files/007_sale_insert.sql"
-run_sql_file "[16/17]" "insert_sql_files/008_registrations_inserts.sql"
-run_sql_file "[17/17]" "sqlFiles/004_seed_auth_users.sql"
+run_sql_file "[1/18]" "sqlFiles/001_create_database.sql"
+run_sql_file "[2/18]" "sqlFiles/002_add_users_table.sql"
+run_sql_file "[3/18]" "sqlFiles/003_extend_users_for_auth.sql"
+run_sql_file "[4/18]" "sqlFiles/005_manager_notif.sql"
+run_sql_file "[5/18]" "sqlFiles/006_trigger_violation_log.sql"
+run_sql_file "[6/18]" "sqlFiles/007_new_tables.sql"
+run_sql_file "[7/18]" "sqlFiles/008_triggers.sql"
+run_sql_file "[8/18]" "sqlFiles/009_reports.sql"
+run_sql_file "[9/18]" "sqlFiles/010_membership_status.sql"
+run_sql_file "[10/18]" "insert_sql_files/001_employee_insert.sql"
+run_sql_file "[11/18]" "insert_sql_files/002_artists_insert.sql"
+run_sql_file "[12/18]" "insert_sql_files/003_exhibition_insert.sql"
+run_sql_file "[13/18]" "insert_sql_files/004_schedule.sql"
+run_sql_file "[14/18]" "insert_sql_files/005_members_insert.sql"
+run_sql_file "[15/18]" "insert_sql_files/006_artwork_loans.sql"
+run_sql_file "[16/18]" "insert_sql_files/007_sale_insert.sql"
+run_sql_file "[17/18]" "insert_sql_files/008_registrations_inserts.sql"
+run_sql_file "[18/18]" "sqlFiles/004_seed_auth_users.sql"
 
 echo
 echo "========================================="
